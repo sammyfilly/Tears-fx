@@ -17,12 +17,12 @@ export async function start() {
     .option('-f, --force', 'force overwrite the output folder')
     .version(getVersion(), '-v, --version', 'output the current version')
     .action(async (yaml: string, options: CliOptions) => {
-      if (!(await fs.pathExists(yaml))) {
-        console.error(
-          '[ERROR] open api spec file path is not exist in the path: ' + yaml
-        );
-        return;
-      }
+      // if (!(await fs.pathExists(yaml))) {
+      //   console.error(
+      //     '[ERROR] open api spec file path is not exist in the path: ' + yaml
+      //   );
+      //   return;
+      // }
 
       if (await fs.pathExists(options.output)) {
         const isOutputEmpty = await isFolderEmpty(options.output);

@@ -40,6 +40,25 @@ export async function parseApi(yaml: string, options: CliOptions) {
 
   const unResolvedApi = (await SwaggerParser.parse(yaml)) as OpenAPIV3.Document;
   const apis = (await SwaggerParser.validate(yaml)) as OpenAPIV3.Document;
+  // apis.info.title = "new title";
+  // unResolvedApi.info.title = "new title";
+  // for (const url in unResolvedApi.paths) {
+  //   for (const operation in unResolvedApi.paths[url]) {
+  //     if (operation === 'get') {
+  //       if(!!unResolvedApi && !!unResolvedApi.paths && !!unResolvedApi.paths[url] && !!unResolvedApi.paths[url]![operation]){
+  //         unResolvedApi.paths[url]![operation]!.operationId = "new operationId";
+  //       }
+  //       apis!.paths![url]!.get!.operationId = "new get operationId";
+        
+  //     }
+  //   }
+  // }
+
+  const resolvedApis = await SwaggerParser.resolve(yaml);
+  console.log("resolved");
+  console.log(resolvedApis);
+  console.log(resolvedApis.paths);
+  //resolvedApis.set("", undefined);
 
   console.log(
     ' > yaml file information: API name: %s, Version: %s',
