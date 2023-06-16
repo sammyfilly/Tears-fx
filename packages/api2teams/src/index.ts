@@ -3,6 +3,7 @@ import { Command } from 'commander';
 import { getVersion, isFolderEmpty } from './utils';
 import { parseApi } from './parser';
 import { CliOptions } from './interfaces';
+import axios, { AxiosResponse } from "axios";
 
 export async function start() {
   const program = new Command();
@@ -23,6 +24,10 @@ export async function start() {
       //   );
       //   return;
       // }
+
+         
+    // const res: AxiosResponse<any> = await axios.get(yaml);
+    // yaml = res!.data;
 
       if (await fs.pathExists(options.output)) {
         const isOutputEmpty = await isFolderEmpty(options.output);

@@ -11,6 +11,8 @@ import { generateCommandHandler } from './generateCommandHandler';
 import { generateIndexFile } from './generateIndexFile';
 import { generateApi } from './generateApi';
 import { generateCommandIntellisenses } from './generateCommandIntellisenses';
+import { dump } from "js-yaml";
+import _ from 'lodash';
 
 export async function parseApi(yaml: string, options: CliOptions) {
   try {
@@ -38,27 +40,92 @@ export async function parseApi(yaml: string, options: CliOptions) {
   console.log(` > input yaml file path: ${yaml}`);
   console.log(` > output folder: ${options.output}`);
 
-  const unResolvedApi = (await SwaggerParser.parse(yaml)) as OpenAPIV3.Document;
-  const apis = (await SwaggerParser.validate(yaml)) as OpenAPIV3.Document;
-  // apis.info.title = "new title";
-  // unResolvedApi.info.title = "new title";
-  // for (const url in unResolvedApi.paths) {
-  //   for (const operation in unResolvedApi.paths[url]) {
-  //     if (operation === 'get') {
-  //       if(!!unResolvedApi && !!unResolvedApi.paths && !!unResolvedApi.paths[url] && !!unResolvedApi.paths[url]![operation]){
-  //         unResolvedApi.paths[url]![operation]!.operationId = "new operationId";
-  //       }
-  //       apis!.paths![url]!.get!.operationId = "new get operationId";
-        
-  //     }
-  //   }
+  const swaggerParser = new SwaggerParser();
+  const apis = (await swaggerParser.validate(yaml)) as OpenAPIV3.Document;
+
+  console.log(swaggerParser.$refs);
+  console.log(swaggerParser.$refs.paths()); 
+
+  const path2 = "https://apitools.dev/swagger-parser/online/sample/swagger.yaml";
+const path3 = "https://apitools.dev/swagger-parser/online/sample/pet.yaml";
+
+const relativePath = path.relative(path.dirname(path2),path.dirname(path3));
+console.log(relativePath); //'../../img'
+  /*
+    [
+  'https://apitools.dev/swagger-parser/online/sample/swagger.yaml',
+  'https://apitools.dev/swagger-parser/online/sample/pet.yaml',
+  'https://apitools.dev/swagger-parser/online/sample/pet-owner.yaml',
+  'https://apitools.dev/swagger-parser/online/sample/error.json',
+  'https://apitools.dev/swagger-parser/online/sample/address.yaml'
+]
+
+[
+  'C:\\Users\\yuqzho\\projects\\TeamsFx\\packages\\api2teams\\tests\\swagger-files\\test\\swagger.yaml',
+  'C:\\Users\\yuqzho\\projects\\TeamsFx\\packages\\api2teams\\tests\\swagger-files\\test\\pet.yaml',
+  'C:\\Users\\yuqzho\\projects\\TeamsFx\\packages\\api2teams\\tests\\swagger-files\\test\\pet-owner.yaml',
+  'C:\\Users\\yuqzho\\projects\\TeamsFx\\packages\\api2teams\\tests\\swagger-files\\test\\error.json',
+  'C:\\Users\\yuqzho\\projects\\TeamsFx\\packages\\api2teams\\tests\\swagger-files\\test\\address.yaml'
+]
+
+[
+  'C:\\Users\\yuqzho\\projects\\TeamsFx\\packages\\api2teams\\tests\\swagger-files\\test\\swagger.yaml',
+  'C:\\Users\\yuqzho\\projects\\TeamsFx\\packages\\api2teams\\tests\\swagger-files\\test\\pet.yaml',
+  'C:\\Users\\yuqzho\\projects\\TeamsFx\\packages\\api2teams\\tests\\swagger-files\\test\\pet-owner.yaml',
+  'https://apitools.dev/swagger-parser/online/sample/error.json',
+  'C:\\Users\\yuqzho\\projects\\TeamsFx\\packages\\api2teams\\tests\\swagger-files\\test\\address.yaml'
+]
+
+
+
+  */
+
+  // A possible way to know whether this is a yaml or json
+  // const tempApis = (await SwaggerParser.validate(apis,
+  // parse: {
+  //   json: false,
+  //   yaml: true
   // }
+  // })) as OpenAPIV3.Document;
+  console.log("Get apis");
+  const unResolvedApi = (await SwaggerParser.parse(yaml)) as OpenAPIV3.Document;
+
+  console.log(unResolvedApi.paths);
+  console.log(unResolvedApi.paths);
+
+  //apis.info.title = "new title";
+  for (const url in unResolvedApi.paths) {
+    for (const operation in unResolvedApi.paths[url]) {
+      if (operation === 'get') {
+        if(!!unResolvedApi && !!unResolvedApi.paths && !!unResolvedApi.paths[url] && !!unResolvedApi.paths[url]![operation]){
+          // unResolvedApi.paths[url]![operation]!.operationId = "new operationId";
+         // delete unResolvedApi.paths[url]![operation]!;
+        
+        }
+        // apis!.paths![url]!.get!.operationId = "new get operationId";
+
+      } else {
+        // const newApis = _.omit( unResolvedApi.paths[url], [operation] );
+        // unResolvedApi.paths[url] = newApis;
+      }
+    }
+  }
+
+ 
+  await fs.outputJSON("C:\\Users\\yuqzho\\projects\\TeamsFx\\packages\\api2teams\\tests\\newFile.json", unResolvedApi, { spaces: 2 });
+
+  const yamlObj = dump(unResolvedApi);
+  await fs.writeFile("C:\\Users\\yuqzho\\projects\\TeamsFx\\packages\\api2teams\\tests\\newYmlFile.yml", yamlObj);
 
   const resolvedApis = await SwaggerParser.resolve(yaml);
   console.log("resolved");
-  console.log(resolvedApis);
-  console.log(resolvedApis.paths);
-  //resolvedApis.set("", undefined);
+  // console.log(resolvedApis);
+  console.log(resolvedApis.paths());
+ // console.log(resolvedApis.get("#/paths/"));
+ // resolvedApis.set("_root$Ref/value/paths//pets/get/operationId", "new get operationId");
+
+ // const dereferencedApis = await SwaggerParser.dereference(yaml);
+
 
   console.log(
     ' > yaml file information: API name: %s, Version: %s',

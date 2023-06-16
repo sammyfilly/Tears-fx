@@ -2,6 +2,9 @@
   // Use IntelliSense to learn about possible attributes.
   // Hover to view descriptions of existing attributes.
   // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  // https://apitools.dev/swagger-parser/online/sample/swagger.yaml
+  // https://yuqzhotest.azurewebsites.net/openapi
+  // "C:\\Users\\yuqzho\\projects\\TeamsFx\\packages\\api2teams\\tests\\swagger-files\\test\\swagger.yaml"
   "version": "0.2.0",
   "configurations": [
     {
@@ -10,7 +13,7 @@
       "name": "Launch new command (non-interactive)",
       "skipFiles": ["<node_internals>/**"],
       "program": "${workspaceFolder}/cli.js",
-      "args": ["https://apitools.dev/swagger-parser/online/sample/swagger.yaml", "-f"],
+      "args": ["C:\\Users\\yuqzho\\projects\\TeamsFx\\packages\\api2teams\\tests\\newYmlFile.yml", "-f"],
       "outFiles": [
         "${workspaceFolder}/lib/**/*.js",
       ],
