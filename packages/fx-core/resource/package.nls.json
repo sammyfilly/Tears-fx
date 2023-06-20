@@ -258,6 +258,8 @@
   "core.createProjectQuestion.title": "New Project",
   "core.spfxFolder.title": "SPFx solution folder",
   "core.spfxFolder.placeholder": "Select the folder that contains your SPFx solution",
+  "core.createProjectQuestion.projectType.copilotPlugin.detail": "Create a plugin to extend Copilot using your APIs",
+  "core.createProjectQuestion.projectType.copilotPlugin.label": "Plugin for Copilot",
   "core.QuestionSelectTargetEnvironment.title": "Select an environment",
   "core.getQuestionNewTargetEnvironmentName.title": "New environment name",
   "core.getQuestionNewTargetEnvironmentName.placeholder": "New environment name",

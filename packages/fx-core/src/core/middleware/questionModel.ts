@@ -17,6 +17,7 @@ import { isCLIDotNetEnabled } from "../../common/featureFlags";
 import { convertToAlphanumericOnly } from "../../common/utils";
 import {
   NewProjectTypeBotOptionItem,
+  NewProjectTypeCopilotPluginOptionItem,
   NewProjectTypeMessageExtensionOptionItem,
   NewProjectTypeOutlookAddinOptionItem,
   NewProjectTypeTabOptionItem,
@@ -58,6 +59,8 @@ import {
   getQuestionForDeployAadManifest,
   getRuntimeQuestion,
   getTabTypeProjectQuestionNode,
+  inputCopilotPluginApiSpecUrl,
+  selectCopilotPluginApiSpec,
   tabsContentUrlQuestion,
   tabsWebsitetUrlQuestion,
 } from "../question";
@@ -281,6 +284,18 @@ async function getQuestionsForCreateProjectInVSC(
   };
   typeNode.addChild(outlookAddinTypeNode);
   outlookAddinTypeNode.addChild(getQuestionsForScaffolding());
+
+  // copilot select API Spec question
+  const openApiSpecQuestion = new QTreeNode(selectCopilotPluginApiSpec());
+  openApiSpecQuestion.condition = {
+    equals: NewProjectTypeCopilotPluginOptionItem().id,
+  };
+  const openApiSpecUrlQuestion = new QTreeNode(inputCopilotPluginApiSpecUrl());
+  openApiSpecUrlQuestion.condition = {
+    equals: "InputUrl",
+  };
+  openApiSpecQuestion.addChild(openApiSpecUrlQuestion);
+  typeNode.addChild(openApiSpecQuestion);
 
   // Language
   const programmingLanguage = new QTreeNode(ProgrammingLanguageQuestion);
