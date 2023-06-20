@@ -626,3 +626,13 @@ export const validateAppPackageOption: OptionItem = {
     "core.selectValidateMethodQuestion.validate.appPackageOptionDescription"
   ),
 };
+
+export function NewProjectTypeCopilotPluginOptionItem(): OptionItem {
+  return {
+    id: "copilot-plugin-type",
+    label: `$(sparkle) ${getLocalizedString(
+      "core.createProjectQuestion.projectType.copilotPlugin.label"
+    )}`,
+    detail: getLocalizedString("core.createProjectQuestion.projectType.copilotPlugin.detail"),
+  };
+}
