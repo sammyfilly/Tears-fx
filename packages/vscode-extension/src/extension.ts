@@ -58,6 +58,7 @@ import { delay, isM365Project, syncFeatureFlags } from "./utils/commonUtils";
 import { loadLocalizedStrings } from "./utils/localizeUtils";
 import { ExtensionSurvey } from "./utils/survey";
 import { ExtensionUpgrade } from "./utils/upgrade";
+import { refreshDiagnostics } from "./diagnostics";
 
 export let VS_CODE_UI: VsCodeUI;
 
@@ -765,6 +766,24 @@ function registerCodelensAndHoverProviders(context: vscode.ExtensionContext) {
       permissionsJsonFileSelector,
       permissionsJsonFileCodeLensProvider
     )
+  );
+
+  const customDiagnostics = vscode.languages.createDiagnosticCollection("custom");
+  context.subscriptions.push(
+    vscode.window.onDidChangeActiveTextEditor((editor) => {
+      if (editor && editor.document.fileName.endsWith("manifest.json")) {
+        refreshDiagnostics(editor.document, customDiagnostics);
+      }
+      context.subscriptions.push(
+        vscode.workspace.onDidChangeTextDocument((e) =>
+          refreshDiagnostics(e.document, customDiagnostics)
+        )
+      );
+
+      context.subscriptions.push(
+        vscode.workspace.onDidCloseTextDocument((doc) => customDiagnostics.delete(doc.uri))
+      );
+    })
   );
 
   const aadManifestPreviewSelectorV3 = {
