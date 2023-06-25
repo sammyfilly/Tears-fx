@@ -22,6 +22,7 @@ import {
   Platform,
   QTreeNode,
   Result,
+  SelectFileOrInputUrlQuestion,
   SingleFileQuestion,
   SingleSelectQuestion,
   StaticOptions,
@@ -97,7 +98,6 @@ export enum CoreQuestionNames {
   OutputManifestParamName = "output-manifest-path",
   M365Host = "m365-host",
   ApiSpecLocation = "api-spec-location",
-  ApiSpecUrl = "api-spec-url",
 }
 
 export const ProjectNamePattern =
@@ -922,26 +922,9 @@ export function selectM365HostQuestion(): QTreeNode {
   });
 }
 
-export function selectCopilotPluginApiSpec(): SingleFileQuestion {
+export function selectCopilotPluginApiSpec(): SelectFileOrInputUrlQuestion {
   return {
-    type: "singleFile",
+    type: "fileOrRemoteUrl",
     name: CoreQuestionNames.ApiSpecLocation,
-    title: "Select an Open API spec",
-    placeholder: "Select an option",
-    possibleOptions: [
-      {
-        id: "InputUrl",
-        label: `$(cloud) Enter Open API Spec URL`,
-      },
-    ],
-  };
-}
-
-export function inputCopilotPluginApiSpecUrl(): TextInputQuestion {
-  return {
-    type: "text",
-    name: CoreQuestionNames.ApiSpecUrl,
-    title: "Open API Spec File",
-    placeholder: "Enter Open API Spec Location",
   };
 }

@@ -731,9 +731,9 @@ export class VsCodeUI implements UserInteraction {
     });
   }
 
-  async selectFileOrInput(
+  async selectLocalFileOrInputRemoteUrl(
     config: SelectLocalFileOrInputRemoteUrlConfig
-  ): Promise<Result<InputResult<string[] | string>, FxError>> {
+  ): Promise<Result<InputResult<string>, FxError>> {
     const disposables: Disposable[] = [];
     try {
       const quickPick: QuickPick<FxQuickPickItem> = window.createQuickPick();

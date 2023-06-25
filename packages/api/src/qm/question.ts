@@ -308,8 +308,8 @@ export interface FuncQuestion extends BaseQuestion {
 
 export interface SelectFileOrInputUrlQuestion extends BaseQuestion {
   type: "fileOrRemoteUrl";
-  selectOptionPlaceHolder: string;
-  inputUrlPlaceHolder: string;
+  selectOptionPlaceHolder?: string;
+  inputUrlPlaceHolder?: string;
 }
 
 /**

@@ -496,9 +496,9 @@ export type SelectFileConfig = UIConfig<string> & {
 // @public (undocumented)
 export interface SelectFileOrInputUrlQuestion extends BaseQuestion {
     // (undocumented)
-    inputUrlPlaceHolder: string;
+    inputUrlPlaceHolder?: string;
     // (undocumented)
-    selectOptionPlaceHolder: string;
+    selectOptionPlaceHolder?: string;
     // (undocumented)
     type: "fileOrRemoteUrl";
 }

@@ -59,7 +59,6 @@ import {
   getQuestionForDeployAadManifest,
   getRuntimeQuestion,
   getTabTypeProjectQuestionNode,
-  inputCopilotPluginApiSpecUrl,
   selectCopilotPluginApiSpec,
   tabsContentUrlQuestion,
   tabsWebsitetUrlQuestion,
@@ -290,11 +289,6 @@ async function getQuestionsForCreateProjectInVSC(
   openApiSpecQuestion.condition = {
     equals: NewProjectTypeCopilotPluginOptionItem().id,
   };
-  const openApiSpecUrlQuestion = new QTreeNode(inputCopilotPluginApiSpecUrl());
-  openApiSpecUrlQuestion.condition = {
-    equals: "InputUrl",
-  };
-  openApiSpecQuestion.addChild(openApiSpecUrlQuestion);
   typeNode.addChild(openApiSpecQuestion);
 
   // Language
