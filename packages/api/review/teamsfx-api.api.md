@@ -479,7 +479,7 @@ export class QTreeNode {
 }
 
 // @public (undocumented)
-export type Question = SingleSelectQuestion | MultiSelectQuestion | TextInputQuestion | SingleFileQuestion | MultiFileQuestion | FolderQuestion | FuncQuestion | SingleFileQuestion;
+export type Question = SingleSelectQuestion | MultiSelectQuestion | TextInputQuestion | SingleFileQuestion | MultiFileQuestion | FolderQuestion | FuncQuestion | SelectFileOrInputUrlQuestion;
 
 // @public
 export type SelectFileConfig = UIConfig<string> & {
@@ -492,6 +492,16 @@ export type SelectFileConfig = UIConfig<string> & {
         description?: string;
     }[];
 };
+
+// @public (undocumented)
+export interface SelectFileOrInputUrlQuestion extends BaseQuestion {
+    // (undocumented)
+    inputUrlPlaceHolder: string;
+    // (undocumented)
+    selectOptionPlaceHolder: string;
+    // (undocumented)
+    type: "fileOrRemoteUrl";
+}
 
 // @public (undocumented)
 export type SelectFileResult = InputResult<string>;
@@ -511,6 +521,14 @@ export type SelectFolderConfig = UIConfig<string>;
 
 // @public (undocumented)
 export type SelectFolderResult = InputResult<string>;
+
+// @public (undocumented)
+export interface SelectLocalFileOrInputRemoteUrlConfig extends UIConfig<string> {
+    // (undocumented)
+    inputUrlPlaceHolder?: string;
+    // (undocumented)
+    selectOptionPlaceHolder?: string;
+}
 
 // @public
 export interface Settings {
@@ -890,6 +908,8 @@ export interface UserInteraction {
     selectFile: (config: SelectFileConfig) => Promise<Result<SelectFileResult, FxError>>;
     selectFiles: (config: SelectFilesConfig) => Promise<Result<SelectFilesResult, FxError>>;
     selectFolder: (config: SelectFolderConfig) => Promise<Result<SelectFolderResult, FxError>>;
+    // (undocumented)
+    selectLocalFileOrInputRemoteUrl?(config: SelectLocalFileOrInputRemoteUrlConfig): Promise<Result<InputTextResult, FxError>>;
     selectOption: (config: SingleSelectConfig) => Promise<Result<SingleSelectResult, FxError>>;
     selectOptions: (config: MultiSelectConfig) => Promise<Result<MultiSelectResult, FxError>>;
     showMessage(level: "info" | "warn" | "error", message: string, modal: boolean, ...items: string[]): Promise<Result<string | undefined, FxError>>;

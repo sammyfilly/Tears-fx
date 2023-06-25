@@ -175,6 +175,11 @@ export interface ExecuteFuncConfig extends UIConfig<string> {
   inputs: Inputs;
 }
 
+export interface SelectLocalFileOrInputRemoteUrlConfig extends UIConfig<string> {
+  selectOptionPlaceHolder?: string;
+  inputUrlPlaceHolder?: string;
+}
+
 /**
  * a wrapper of user input result
  */
@@ -325,6 +330,10 @@ export interface UserInteraction {
     timeout?: number;
     env?: { [k: string]: string };
   }): Promise<Result<string, FxError>>;
+
+  selectLocalFileOrInputRemoteUrl?(
+    config: SelectLocalFileOrInputRemoteUrlConfig
+  ): Promise<Result<InputTextResult, FxError>>;
 }
 
 export interface IProgressHandler {

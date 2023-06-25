@@ -109,13 +109,17 @@ const questionVisitor: QuestionTreeVisitor = async function (
     } catch (e) {
       return err(assembleError(e));
     }
-  } else {
+  } else if (question.type) {
     const defaultValue =
       question.forgetLastValue !== true && question.value
         ? question.value
         : await getCallFuncValue(inputs, question.default);
-    const placeholder = (await getCallFuncValue(inputs, question.placeholder)) as string;
-    const prompt = (await getCallFuncValue(inputs, question.prompt)) as string;
+    let placeholder;
+    let prompt;
+    if (question.type !== "fileOrRemoteUrl") {
+      placeholder = (await getCallFuncValue(inputs, question.placeholder)) as string;
+      prompt = (await getCallFuncValue(inputs, question.prompt)) as string;
+    }
     if (question.type === "text") {
       const validationFunc = question.validation
         ? getValidationFunction<string>(question.validation, inputs)
@@ -227,6 +231,14 @@ const questionVisitor: QuestionTreeVisitor = async function (
         step: step,
         totalSteps: totalSteps,
         validation: validationFunc,
+      });
+    } else if (question.type === "fileOrRemoteUrl" && !!ui.selectLocalFileOrInputRemoteUrl) {
+      return await ui.selectLocalFileOrInputRemoteUrl({
+        name: question.name,
+        title: title,
+        default: defaultValue as string,
+        step: step,
+        totalSteps: totalSteps,
       });
     }
   }

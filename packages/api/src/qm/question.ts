@@ -306,6 +306,12 @@ export interface FuncQuestion extends BaseQuestion {
   func: LocalFunc<any>;
 }
 
+export interface SelectFileOrInputUrlQuestion extends BaseQuestion {
+  type: "fileOrRemoteUrl";
+  selectOptionPlaceHolder: string;
+  inputUrlPlaceHolder: string;
+}
+
 /**
  * `Group` is a virtual node in the question tree that wraps a group of questions, which share the same activation condition in this group.
  */
@@ -322,7 +328,7 @@ export type Question =
   | MultiFileQuestion
   | FolderQuestion
   | FuncQuestion
-  | SingleFileQuestion;
+  | SelectFileOrInputUrlQuestion;
 
 /**
  * QTreeNode is the tree node data structure, which have three main properties:
