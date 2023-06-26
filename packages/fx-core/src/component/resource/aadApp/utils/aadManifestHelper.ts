@@ -52,7 +52,7 @@ export class AadManifestHelper {
       parentalControlSettings: manifest.parentalControlSettings,
       publicClient: {
         redirectUris: manifest.replyUrlsWithType
-          .filter((item) => item.type === "InstalledClient")
+          ?.filter((item) => item.type === "InstalledClient")
           .map((item) => item.url),
       },
       requiredResourceAccess: manifest.requiredResourceAccess,
@@ -60,7 +60,7 @@ export class AadManifestHelper {
         homePageUrl: manifest.signInUrl,
         logoutUrl: manifest.logoutUrl,
         redirectUris: manifest.replyUrlsWithType
-          .filter((item) => item.type === "Web")
+          ?.filter((item) => item.type === "Web")
           .map((item) => item.url),
         implicitGrantSettings: {
           enableIdTokenIssuance: manifest.oauth2AllowIdTokenImplicitFlow,
@@ -69,7 +69,7 @@ export class AadManifestHelper {
       },
       spa: {
         redirectUris: manifest.replyUrlsWithType
-          .filter((item) => item.type === "Spa")
+          ?.filter((item) => item.type === "Spa")
           .map((item) => item.url),
       },
     };
@@ -81,8 +81,8 @@ export class AadManifestHelper {
     const result: AADManifest = {
       id: app.id,
       appId: app.appId,
-      acceptMappedClaims: app.api.acceptMappedClaims,
-      accessTokenAcceptedVersion: app.api.requestedAccessTokenVersion,
+      acceptMappedClaims: app.api?.acceptMappedClaims,
+      accessTokenAcceptedVersion: app.api?.requestedAccessTokenVersion,
       addIns: app.addIns,
       allowPublicClient: app.isFallbackPublicClient,
       appRoles: app.appRoles,
@@ -91,12 +91,12 @@ export class AadManifestHelper {
       groupMembershipClaims: app.groupMembershipClaims,
       identifierUris: app.identifierUris,
       informationalUrls: {
-        termsOfService: app.info.termsOfServiceUrl,
-        support: app.info.supportUrl,
-        privacy: app.info.privacyStatementUrl,
-        marketing: app.info.marketingUrl,
+        termsOfService: app.info?.termsOfServiceUrl,
+        support: app.info?.supportUrl,
+        privacy: app.info?.privacyStatementUrl,
+        marketing: app.info?.marketingUrl,
       },
-      keyCredentials: app.keyCredentials.map((item) => {
+      keyCredentials: app.keyCredentials?.map((item) => {
         return {
           customKeyIdentifier: item.customKeyIdentifier,
           endDate: item.endDateTime,
@@ -108,30 +108,30 @@ export class AadManifestHelper {
           displayName: item.displayName,
         };
       }),
-      knownClientApplications: app.api.knownClientApplications,
-      logoutUrl: app.web.logoutUrl,
+      knownClientApplications: app.api?.knownClientApplications,
+      logoutUrl: app.web?.logoutUrl,
       name: app.displayName,
       notes: app.notes,
-      oauth2AllowIdTokenImplicitFlow: app.web.implicitGrantSettings.enableIdTokenIssuance,
-      oauth2AllowImplicitFlow: app.web.implicitGrantSettings.enableIdTokenIssuance,
-      oauth2Permissions: app.api.oauth2PermissionScopes,
+      oauth2AllowIdTokenImplicitFlow: app.web?.implicitGrantSettings?.enableIdTokenIssuance,
+      oauth2AllowImplicitFlow: app.web?.implicitGrantSettings?.enableIdTokenIssuance,
+      oauth2Permissions: app.api?.oauth2PermissionScopes,
       optionalClaims: app.optionalClaims,
       parentalControlSettings: app.parentalControlSettings,
-      preAuthorizedApplications: app.api.preAuthorizedApplications.map((item) => {
+      preAuthorizedApplications: app.api?.preAuthorizedApplications?.map((item) => {
         return {
           appId: item.appId,
           permissionIds: item.delegatedPermissionIds,
         };
       }),
-      replyUrlsWithType: app.spa.redirectUris
-        .map((item) => {
+      replyUrlsWithType: app.spa?.redirectUris
+        ?.map((item) => {
           return {
             type: "Spa",
             url: item,
           };
         })
         .concat(
-          app.web.redirectUris.map((item) => {
+          app.web?.redirectUris?.map((item) => {
             return {
               type: "Web",
               url: item,
@@ -139,7 +139,7 @@ export class AadManifestHelper {
           })
         )
         .concat(
-          app.publicClient.redirectUris.map((item) => {
+          app.publicClient?.redirectUris?.map((item) => {
             return {
               type: "InstalledClient",
               url: item,
@@ -147,7 +147,7 @@ export class AadManifestHelper {
           })
         ),
       requiredResourceAccess: app.requiredResourceAccess,
-      signInUrl: app.web.homePageUrl,
+      signInUrl: app.web?.homePageUrl,
       signInAudience: app.signInAudience,
       tags: app.tags,
       tokenEncryptionKeyId: app.tokenEncryptionKeyId,
@@ -217,14 +217,14 @@ export class AadManifestHelper {
         requiredResourceAccessItem.resourceAppId = resourceId;
       }
 
-      requiredResourceAccessItem.resourceAccess.forEach((resourceAccessItem) => {
+      requiredResourceAccessItem.resourceAccess?.forEach((resourceAccessItem) => {
         const resourceAccessIdOrName = resourceAccessItem.id;
         if (!isUUID(resourceAccessIdOrName)) {
           let resourceAccessId;
           if (resourceAccessItem.type === "Scope") {
-            resourceAccessId = map[resourceId].scopes[resourceAccessItem.id];
+            resourceAccessId = map[resourceId]?.scopes[resourceAccessItem.id];
           } else if (resourceAccessItem.type === "Role") {
-            resourceAccessId = map[resourceId].roles[resourceAccessItem.id];
+            resourceAccessId = map[resourceId]?.roles[resourceAccessItem.id];
           } else {
             throw new Error(
               util.format(

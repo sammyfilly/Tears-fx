@@ -14,6 +14,10 @@ describe("AAD manifest helper Test", () => {
     chai.expect(aadApp).to.deep.equal(fakeAadApp);
   });
 
+  it("manifestToApplication with empty manifest", async () => {
+    AadManifestHelper.manifestToApplication(emptyAadManifest);
+  });
+
   it("applicationToManifest", async () => {
     const aadManifest = AadManifestHelper.applicationToManifest(fakeAadApp);
     chai.expect(aadManifest).to.deep.equal(fakeAadManifest);
@@ -387,4 +391,11 @@ const fakeAadManifest = {
   signInAudience: "AzureADMyOrg",
   tags: [],
   tokenEncryptionKeyId: null,
+};
+
+const emptyAadManifest = {
+  id: "fake-id",
+  appId: "fake-app-id",
+  displayName: "fake-name",
+  signInAudience: "AzureADMyOrg",
 };

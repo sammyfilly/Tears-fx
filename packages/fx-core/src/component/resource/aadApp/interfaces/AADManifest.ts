@@ -22,7 +22,7 @@ export interface AADManifest {
   optionalClaims?: OptionalClaims | null;
   parentalControlSettings?: ParentalControlSettings | null;
   preAuthorizedApplications: PreAuthorizedApplication[]; // api.preAuthorizedApplications
-  replyUrlsWithType: ReplyUrlsWithType[];
+  replyUrlsWithType?: ReplyUrlsWithType[];
   requiredResourceAccess: RequiredResourceAccess[];
 
   signInUrl?: string | null; // web.homePaghUrl
