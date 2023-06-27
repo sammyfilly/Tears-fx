@@ -735,7 +735,7 @@ export class VsCodeUI implements UserInteraction {
     config: SelectLocalFileOrInputRemoteUrlConfig
   ): Promise<Result<InputResult<string>, FxError>> {
     const selectFileConfig: SelectFileConfig = {
-      possibleFiles: [{ id: "inputUrL", label: "input a URL" }],
+      possibleFiles: [{ id: "inputUrl", label: "input a URL" }],
       name: "appPackagePath",
       title: "",
       placeholder: "Select an option to continue",
