@@ -481,7 +481,7 @@ export class VsCodeUI implements UserInteraction {
           }),
           inputBox.onDidAccept(onDidAccept),
           inputBox.onDidHide(() => {
-            resolve(err(new UserCancelError("VSC")));
+            resolve(err(new UserCancelError("VSCInput")));
           }),
           inputBox.onDidTriggerButton((button) => {
             if (button === QuickInputButtons.Back) resolve(ok({ type: "back" }));
@@ -734,100 +734,131 @@ export class VsCodeUI implements UserInteraction {
   async selectLocalFileOrInputRemoteUrl(
     config: SelectLocalFileOrInputRemoteUrlConfig
   ): Promise<Result<InputResult<string>, FxError>> {
-    const disposables: Disposable[] = [];
-    try {
-      const quickPick: QuickPick<FxQuickPickItem> = window.createQuickPick();
-      //quickPick.title = config.title;
-      //if (config.step && config.step > 1) {
-      quickPick.buttons = [QuickInputButtons.Back];
-      //}
-      quickPick.ignoreFocusOut = true;
-      quickPick.placeholder = "Select an option to continue";
-      quickPick.matchOnDescription = false;
-      quickPick.matchOnDetail = false;
-      quickPick.canSelectMany = false;
-      let fileSelectorIsOpen = false;
-      return await new Promise(async (resolve) => {
-        // set options
-        quickPick.items = [
-          {
-            id: "inputUrl",
-            label: "input URL",
-            description: "Input URL",
-          },
+    const selectFileConfig: SelectFileConfig = {
+      possibleFiles: [{ id: "inputUrL", label: "input a URL" }],
+      name: "appPackagePath",
+      title: "",
+      placeholder: "Select an option to continue",
+      filters: { file: ["yml", "yaml", "json"] },
+    };
 
-          {
-            id: "browse",
-            label: `$(file) ${localize("teamstoolkit.qm.browse")}`,
-          },
-        ];
-
-        const onDidAccept = async () => {
-          const selectedItems = quickPick.selectedItems;
-          if (selectedItems && selectedItems.length > 0) {
-            const item = selectedItems[0];
-            if (item.id === "inputUrl") {
-              //resolve(ok({ type: "success", result: config.default }));
-              const inputTextConfig: InputTextConfig = {
-                step: 2,
-                name: "ApiSpecFile",
-                title: "Api Spec File",
-                placeholder: "Enter Open API Spec Location",
-              };
-              const inputResult = await this.inputText(inputTextConfig);
-              if (inputResult.isErr()) {
-                resolve(err(inputResult.error));
-              } else if (inputResult.value.type === "success") {
-                resolve(ok({ type: "success", result: inputResult.value.result }));
-              }
-            } else if (item.id === "browse") {
-              fileSelectorIsOpen = true;
-              const uriList: Uri[] | undefined = await window.showOpenDialog({
-                //defaultUri: config.default ? Uri.file(config.default) : undefined,
-                defaultUri: undefined,
-                canSelectFiles: true,
-                canSelectFolders: false,
-                canSelectMany: false,
-                filters: { file: ["yml", "yaml", "json"] },
-                title: "selet a json/yml file",
-              });
-              if (uriList && uriList.length > 0) {
-                const result = uriList[0].fsPath;
-                resolve(ok({ type: "success", result: result }));
-              } else {
-                resolve(err(new UserCancelError("VSC")));
-              }
-            } else {
-              resolve(
-                err(
-                  new NotImplementedError(
-                    "VSC",
-                    "methods other than selecting a local file or input an URL"
-                  )
-                )
-              );
-            }
-          }
+    const selectFileOrItemRes = await this.selectFileInQuickPick(selectFileConfig, "file");
+    if (selectFileOrItemRes.isOk()) {
+      if (selectFileOrItemRes.value.result === "inputUrl") {
+        const inputTextConfig: InputTextConfig = {
+          step: 2,
+          name: "ApiSpecFile",
+          title: "Api Spec File",
+          placeholder: "Enter Open API Spec Location",
         };
-
-        disposables.push(
-          quickPick.onDidAccept(onDidAccept),
-          quickPick.onDidHide(() => {
-            if (fileSelectorIsOpen === false) resolve(err(new UserCancelError("VSC")));
-          }),
-          quickPick.onDidTriggerButton((button) => {
-            if (button === QuickInputButtons.Back) resolve(ok({ type: "back" }));
-          })
-        );
-
-        disposables.push(quickPick);
-        quickPick.show();
-      });
-    } finally {
-      disposables.forEach((d) => {
-        d.dispose();
-      });
+        const inputRes = await this.inputText(inputTextConfig);
+        if (inputRes.isOk()) {
+          return ok(inputRes.value);
+        } else {
+          return err(inputRes.error);
+        }
+      } else {
+        return ok(selectFileOrItemRes.value);
+      }
+    } else {
+      return err(selectFileOrItemRes.error);
     }
+    // const disposables: Disposable[] = [];
+    // try {
+    //   const quickPick: QuickPick<FxQuickPickItem> = window.createQuickPick();
+    //   //quickPick.title = config.title;
+    //   //if (config.step && config.step > 1) {
+    //   quickPick.buttons = [QuickInputButtons.Back];
+    //   //}
+    //   quickPick.ignoreFocusOut = true;
+    //   quickPick.placeholder = "Select an option to continue";
+    //   quickPick.matchOnDescription = false;
+    //   quickPick.matchOnDetail = false;
+    //   quickPick.canSelectMany = false;
+    //   let fileSelectorIsOpen = false;
+
+    //   return await new Promise(async (resolve) => {
+    //     // set options
+    //     quickPick.items = [
+    //       {
+    //         id: "inputUrl",
+    //         label: "input URL",
+    //         description: "Input URL",
+    //       },
+
+    //       {
+    //         id: "browse",
+    //         label: `$(file) ${localize("teamstoolkit.qm.browse")}`,
+    //       },
+    //     ];
+
+    //     const onDidAccept = async () => {
+    //       const selectedItems = quickPick.selectedItems;
+    //       if (selectedItems && selectedItems.length > 0) {
+    //         const item = selectedItems[0];
+    //         if (item.id === "inputUrl") {
+    //           //resolve(ok({ type: "success", result: config.default }));
+    //           // const inputTextConfig: InputTextConfig = {
+    //           //   step: 2,
+    //           //   name: "ApiSpecFile",
+    //           //   title: "Api Spec File",
+    //           //   placeholder: "Enter Open API Spec Location",
+    //           // };
+    //           // const inputResult = await this.inputText(inputTextConfig);
+    //           // if (inputResult.isErr()) {
+    //           //   resolve(err(inputResult.error));
+    //           // } else if (inputResult.value.type === "success") {
+    //           //   resolve(ok({ type: "success", result: inputResult.value.result }));
+    //           // }
+    //           resolve(ok({ type: "success", result: item.id }));
+    //         } else if (item.id === "browse") {
+    //           fileSelectorIsOpen = true;
+    //           const uriList: Uri[] | undefined = await window.showOpenDialog({
+    //             //defaultUri: config.default ? Uri.file(config.default) : undefined,
+    //             defaultUri: undefined,
+    //             canSelectFiles: true,
+    //             canSelectFolders: false,
+    //             canSelectMany: false,
+    //             filters: { file: ["yml", "yaml", "json"] },
+    //             title: "selet a json/yml file",
+    //           });
+    //           if (uriList && uriList.length > 0) {
+    //             const result = uriList[0].fsPath;
+    //             resolve(ok({ type: "success", result: result }));
+    //           } else {
+    //             resolve(err(new UserCancelError("VSCkKKKKK")));
+    //           }
+    //         } else {
+    //           resolve(
+    //             err(
+    //               new NotImplementedError(
+    //                 "VSC",
+    //                 "methods other than selecting a local file or input an URL"
+    //               )
+    //             )
+    //           );
+    //         }
+    //       }
+    //     };
+
+    //     disposables.push(
+    //       quickPick.onDidAccept(onDidAccept),
+    //       quickPick.onDidHide(() => {
+    //         if (fileSelectorIsOpen === false) resolve(err(new UserCancelError("VSCPPPP")));
+    //       }),
+    //       quickPick.onDidTriggerButton((button) => {
+    //         if (button === QuickInputButtons.Back) resolve(ok({ type: "back" }));
+    //       })
+    //     );
+
+    //     disposables.push(quickPick);
+    //     quickPick.show();
+    //   });
+    // } finally {
+    //   disposables.forEach((d) => {
+    //     d.dispose();
+    //   });
+    // }
   }
 
   public async showMessage(

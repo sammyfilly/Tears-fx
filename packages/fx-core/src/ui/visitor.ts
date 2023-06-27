@@ -233,13 +233,14 @@ const questionVisitor: QuestionTreeVisitor = async function (
         validation: validationFunc,
       });
     } else if (question.type === "fileOrRemoteUrl" && !!ui.selectLocalFileOrInputRemoteUrl) {
-      return await ui.selectLocalFileOrInputRemoteUrl({
+      const res = await ui.selectLocalFileOrInputRemoteUrl({
         name: question.name,
         title: title,
         default: defaultValue as string,
         step: step,
         totalSteps: totalSteps,
       });
+      return res;
     }
   }
   return err(
