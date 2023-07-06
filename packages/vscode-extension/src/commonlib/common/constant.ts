@@ -16,7 +16,7 @@ export const subscriptionInfoFile = "subscriptionInfo.json";
 export const envDefaultJsonFile = "env.default.json";
 export const stateDefaultJsonFile = "state.dev.json";
 
-export const m365CacheName = "appStudio";
+export const m365CacheName = "m365";
 
 export const extensionID = "TeamsDevApp.ms-teams-vscode-extension";
 export const codeSpacesAuthComplete = "auth-complete";
