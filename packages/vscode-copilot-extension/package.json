@@ -1,0 +1,1316 @@
+{
+  "name": "ms-copilot-vscode-extension",
+  "displayName": "Teams Toolkit",
+  "description": "Create, debug, and deploy Teams apps with Teams Toolkit",
+  "version": "5.0.1",
+  "publisher": "TeamsDevApp",
+  "author": "Microsoft Corporation",
+  "private": true,
+  "icon": "media/github-copilot.png",
+  "main": "./out/src/extension.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/OfficeDev/TeamsFx"
+  },
+  "views": {
+    "ms-copilot-toolkit": [
+      {
+        "id": "ms-copilot-toolkit",
+        "name": "Commands"
+      }
+    ]
+  },
+  "engines": {
+    "vscode": "^1.66.0"
+  },
+  "license": "MIT",
+  "keywords": [
+    "Microsoft Teams",
+    "Azure",
+    "Microsoft 365"
+  ],
+  "preview": false,
+  "categories": [
+    "Azure",
+    "Extension Packs",
+    "Snippets"
+  ],
+  "aiKey": "1c56be97-bb74-42cf-b04b-8f1aabf04592",
+  "featureFlag": "true",
+  "files": [
+    "out/**/*"
+  ],
+  "activationEvents": [
+    "onCommand:ms-copilot-extension.create",
+    "onCommand:ms-copilot-extension.createFromWalkthrough",
+    "onCommand:ms-copilot-extension.openLifecycleTreeview",
+    "onCommand:ms-copilot-extension.openDocument",
+    "onCommand:ms-copilot-extension.openReadMe",
+    "onCommand:ms-copilot-extension.openSamples",
+    "onCommand:ms-copilot-extension.openWelcome",
+    "onCommand:ms-copilot-extension.selectAndDebug",
+    "onCommand:ms-copilot-extension.selectTutorials",
+    "onCommand:ms-copilot-extension.signinM365",
+    "onCommand:ms-copilot-extension.validate-getStarted-prerequisites",
+    "onCommand:workbench.action.tasks.runTask",
+    "onCommand:workbench.action.debug.start",
+    "workspaceContains:/.fx/**/*",
+    "workspaceContains:teamsapp.yml",
+    "onView:ms-copilot-empty-project",
+    "onUri"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "%teamstoolkit.capabilities.untrustedWorkspaces.description%",
+      "restrictedConfigurations": []
+    }
+  },
+  "contributes": {
+    "icons": {
+      "ms-copilot-add-feature": {
+        "description": "Add feature icon in command tree view",
+        "default": {
+          "fontPath": "./media/font/teamstoolkit.woff",
+          "fontCharacter": "\\E000"
+        }
+      },
+      "ms-copilot-developer-portal": {
+        "description": "Developer portal icon in command tree view",
+        "default": {
+          "fontPath": "./media/font/teamstoolkit.woff",
+          "fontCharacter": "\\E001"
+        }
+      },
+      "ms-copilot-m365": {
+        "description": "Microsoft 365 icon in command tree view",
+        "default": {
+          "fontPath": "./media/font/teamstoolkit.woff",
+          "fontCharacter": "\\E002"
+        }
+      },
+      "ms-copilot-add-environment": {
+        "description": "Microsoft 365 icon in command tree view",
+        "default": {
+          "fontPath": "./media/font/teamstoolkit.woff",
+          "fontCharacter": "\\E004"
+        }
+      }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "ms-copilot",
+          "title": "Copilot plugin extension",
+          "icon": "media/github-copilot.svg"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "ms-copilot-empty-project",
+        "contents": "%teamstoolkit.viewsWelcome.ms-copilot-empty-project.content%",
+        "enablement": "ms-copilot-extension.initialized"
+      },
+      {
+        "view": "ms-copilot-empty-project-new-user",
+        "contents": "%teamstoolkit.viewsWelcome.ms-copilot-empty-project-new-user.content%",
+        "enablement": "ms-copilot-extension.initialized"
+      },
+      {
+        "view": "ms-copilot-project-and-check-upgradeV3",
+        "contents": "%teamstoolkit.viewsWelcome.ms-copilot-project-and-check-upgradeV3.content%",
+        "enablement": "ms-copilot-extension.initialized"
+      },
+      {
+        "view": "ms-copilot-feedback",
+        "contents": "%teamstoolkit.viewsWelcome.ms-copilot-feedback.content%",
+        "enablement": "ms-copilot-extension.initialized"
+      }
+    ],
+    "views": {
+      "ms-copilot": [
+        {
+          "id": "ms-copilot-accounts",
+          "name": "Accounts",
+          "when": "ms-copilot-extension.isTeamsFx"
+        },
+        {
+          "id": "ms-copilot-environment",
+          "name": "Environment",
+          "when": "ms-copilot-extension.isTeamsFx && !ms-copilot-extension.canUpgradeV3 && isWorkspaceTrusted"
+        },
+        {
+          "id": "ms-copilot-development",
+          "name": "Development",
+          "when": "ms-copilot-extension.isTeamsFx"
+        },
+        {
+          "id": "ms-copilot-lifecycle",
+          "name": "Lifecycle",
+          "when": "ms-copilot-extension.isTeamsFx && !ms-copilot-extension.canUpgradeV3"
+        },
+        {
+          "id": "ms-copilot-utility",
+          "name": "Utility",
+          "when": "ms-copilot-extension.isTeamsFx && !ms-copilot-extension.canUpgradeV3"
+        },
+        {
+          "id": "ms-copilot-project-and-check-upgradeV3",
+          "name": "Upgrade",
+          "when": "ms-copilot-extension.isTeamsFx && ms-copilot-extension.canUpgradeV3 && isWorkspaceTrusted"
+        },
+        {
+          "id": "ms-copilot-help-and-feedback",
+          "name": "Help and feedback",
+          "when": "ms-copilot-extension.isTeamsFx && !ms-copilot-extension.canUpgradeV3",
+          "visibility": "visible"
+        },
+        {
+          "id": "ms-copilot-help",
+          "name": "Help",
+          "when": "false",
+          "visibility": "collapsed"
+        },
+        {
+          "id": "ms-copilot-feedback",
+          "name": "Feedback",
+          "when": "false",
+          "visibility": "visible"
+        },
+        {
+          "id": "ms-copilot-empty-project",
+          "name": "Teams Toolkit",
+          "when": "!ms-copilot-extension.isTeamsFx && !ms-copilot-extension.isNewUser"
+        },
+        {
+          "id": "ms-copilot-empty-project-new-user",
+          "name": "Teams Toolkit",
+          "when": "!ms-copilot-extension.isTeamsFx && ms-copilot-extension.isNewUser"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "ms-copilot-extension.addEnvironmentWithIcon",
+          "when": "view == ms-copilot-environment",
+          "group": "navigation@1"
+        },
+        {
+          "command": "ms-copilot-extension.refreshEnvironment",
+          "when": "view == ms-copilot-environment",
+          "group": "navigation@2"
+        },
+        {
+          "command": "ms-copilot-extension.openAccountLink",
+          "when": "view == ms-copilot-accounts",
+          "group": "navigation@2"
+        },
+        {
+          "command": "ms-copilot-extension.createAccount",
+          "when": "view == ms-copilot-accounts",
+          "group": "navigation@1"
+        },
+        {
+          "command": "ms-copilot-extension.openEnvLink",
+          "when": "view == ms-copilot-environment",
+          "group": "navigation@3"
+        },
+        {
+          "command": "ms-copilot-extension.openDevelopmentLink",
+          "when": "view == ms-copilot-development",
+          "group": "navigation@1"
+        },
+        {
+          "command": "ms-copilot-extension.openLifecycleLink",
+          "when": "view == ms-copilot-lifecycle",
+          "group": "navigation@1"
+        },
+        {
+          "command": "ms-copilot-extension.openHelpFeedbackLink",
+          "when": "view == ms-copilot-help-and-feedback",
+          "group": "navigation@1"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "ms-copilot-extension.signOut",
+          "when": "view == ms-copilot-accounts && viewItem == signedinM365",
+          "group": "inline@1"
+        },
+        {
+          "command": "ms-copilot-extension.signOut",
+          "when": "view == ms-copilot-accounts && viewItem == signedinAzure",
+          "group": "inline@1"
+        },
+        {
+          "command": "ms-copilot-extension.m365AccountSettings",
+          "when": "view == ms-copilot-accounts && viewItem == signedinM365",
+          "group": "inline@2"
+        },
+        {
+          "command": "ms-copilot-extension.refreshSideloading",
+          "when": "view == ms-copilot-accounts && viewItem == checkSideloading",
+          "group": "inline"
+        },
+        {
+          "command": "ms-copilot-extension.azureAccountSettings",
+          "when": "view == ms-copilot-accounts && viewItem == signedinAzure",
+          "group": "inline@2"
+        },
+        {
+          "command": "ms-copilot-extension.openDocumentLink",
+          "when": "view == ms-copilot-accounts && viewItem =~ /^signinM365$|^signinAzure$/",
+          "group": "inline"
+        },
+        {
+          "command": "ms-copilot-extension.preview",
+          "when": "view == ms-copilot-environment && viewItem =~ /environment-provisioned|local-existing-app/"
+        },
+        {
+          "command": "ms-copilot-extension.previewWithIcon",
+          "when": "view == ms-copilot-environment && viewItem =~ /environment-provisioned|local-existing-app/",
+          "group": "inline@3"
+        },
+        {
+          "command": "ms-copilot-extension.localdebug",
+          "when": "view == ms-copilot-environment && viewItem =~ /^local$/"
+        },
+        {
+          "command": "ms-copilot-extension.localdebugWithIcon",
+          "when": "view == ms-copilot-environment && viewItem =~ /^local$/",
+          "group": "inline@3"
+        },
+        {
+          "command": "ms-copilot-extension.manageCollaborator",
+          "when": "view == ms-copilot-environment && viewItem =~ /environment/",
+          "group": "inline@3"
+        },
+        {
+          "command": "ms-copilot-extension.openSubscriptionInPortal",
+          "when": "view == ms-copilot-environment && viewItem == openSubscriptionInPortal",
+          "group": "inline@3"
+        },
+        {
+          "command": "ms-copilot-extension.openResourceGroupInPortal",
+          "when": "view == ms-copilot-environment && viewItem == openResourceGroupInPortal",
+          "group": "inline@3"
+        },
+        {
+          "command": "ms-copilot-extension.openDocumentLink",
+          "when": "view == ms-copilot-development && viewItem =~ /^ms-copilot-extension.(create|openSamples|openManifest)$/",
+          "group": "inline"
+        },
+        {
+          "command": "ms-copilot-extension.openDocumentLink",
+          "when": "view == ms-copilot-lifecycle && viewItem =~ /^ms-copilot-extension.(provision|deploy|publish)$/",
+          "group": "inline"
+        },
+        {
+          "command": "ms-copilot-extension.openDocumentLink",
+          "when": "view == ms-copilot-utility && viewItem =~ /^ms-copilot-extension.(build|publishInDeveloperPortal)$/",
+          "group": "inline"
+        }
+      ],
+      "editor/title/run": [
+        {
+          "command": "ms-copilot-extension.selectAndDebug",
+          "when": "!inDebugMode && debuggersAvailable && ms-copilot-extension.runIconActive",
+          "group": "teamsfx"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "ms-copilot-extension.openPreviewAadFile",
+          "when": "resourceFilename == aad.template.json && ms-copilot-extension.isAadManifestEnabled",
+          "group": "navigation"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "ms-copilot-extension.addEnvironmentWithIcon",
+          "when": "false"
+        },
+        {
+          "command": "ms-copilot-extension.azureAccountSettings",
+          "when": "false"
+        },
+        {
+          "command": "ms-copilot-extension.createAccount",
+          "when": "false"
+        },
+        {
+          "command": "ms-copilot-extension.deployManifestFromCtxMenu",
+          "when": "false"
+        },
+        {
+          "command": "ms-copilot-extension.grantPermission",
+          "when": "false"
+        },
+        {
+          "command": "ms-copilot-extension.listCollaborator",
+          "when": "false"
+        },
+        {
+          "command": "ms-copilot-extension.manageCollaborator",
+          "when": "false"
+        },
+        {
+          "command": "ms-copilot-extension.localdebug",
+          "when": "false"
+        },
+        {
+          "command": "ms-copilot-extension.localdebugWithIcon",
+          "when": "false"
+        },
+        {
+          "command": "ms-copilot-extension.m365AccountSettings",
+          "when": "false"
+        },
+        {
+          "command": "ms-copilot-extension.openAccountLink",
+          "when": "false"
+        },
+        {
+          "command": "ms-copilot-extension.openLifecycleLink",
+          "when": "false"
+        },
+        {
+          "command": "ms-copilot-extension.openDevelopmentLink",
+          "when": "false"
+        },
+        {
+          "command": "ms-copilot-extension.openDocumentLink",
+          "when": "false"
+        },
+        {
+          "command": "ms-copilot-extension.openEnvLink",
+          "when": "false"
+        },
+        {
+          "command": "ms-copilot-extension.openHelpFeedbackLink",
+          "when": "false"
+        },
+        {
+          "command": "ms-copilot-extension.openPreviewAadFile",
+          "when": "false"
+        },
+        {
+          "command": "ms-copilot-extension.openResourceGroupInPortal",
+          "when": "false"
+        },
+        {
+          "command": "ms-copilot-extension.openSchema",
+          "when": "false"
+        },
+        {
+          "command": "ms-copilot-extension.openSubscriptionInPortal",
+          "when": "false"
+        },
+        {
+          "command": "ms-copilot-extension.preview",
+          "when": "false"
+        },
+        {
+          "command": "ms-copilot-extension.previewWithIcon",
+          "when": "false"
+        },
+        {
+          "command": "ms-copilot-extension.refreshEnvironment",
+          "when": "false"
+        },
+        {
+          "command": "ms-copilot-extension.refreshSideloading",
+          "when": "false"
+        },
+        {
+          "command": "ms-copilot-extension.selectAndDebug",
+          "when": "false"
+        },
+        {
+          "command": "ms-copilot-extension.signOut",
+          "when": "false"
+        },
+        {
+          "command": "ms-copilot-extension.checkProjectUpgrade",
+          "when": "ms-copilot-extension.canUpgradeV3"
+        },
+        {
+          "command": "ms-copilot-extension.openSurvey",
+          "when": "false"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "ms-copilot-extension.create",
+        "title": "%teamstoolkit.commands.createProject.title%",
+        "enablement": "!ms-copilot-extension.commandLocked",
+        "category": "Teams"
+      },
+      {
+        "command": "ms-copilot-extension.createFromWalkthrough",
+        "title": "Teams - Create Project",
+        "enablement": "never"
+      },
+      {
+        "command": "ms-copilot-extension.openLifecycleTreeview",
+        "title": "Teams - Open Lifecycle Treeview",
+        "enablement": "never"
+      },
+      {
+        "command": "ms-copilot-extension.openDocument",
+        "title": "%teamstoolkit.commands.document.title%",
+        "category": "Teams"
+      },
+      {
+        "command": "ms-copilot-extension.openReadMe",
+        "title": "Teams - Open Read Me",
+        "enablement": "never"
+      },
+      {
+        "command": "ms-copilot-extension.openSamples",
+        "title": "%teamstoolkit.commands.viewSamples.title%",
+        "category": "Teams"
+      },
+      {
+        "command": "ms-copilot-extension.openWelcome",
+        "title": "%teamstoolkit.commands.getstarted.title%",
+        "category": "Teams"
+      },
+      {
+        "command": "ms-copilot-extension.selectAndDebug",
+        "title": "%teamstoolkit.commands.debug.title%",
+        "icon": "$(run)"
+      },
+      {
+        "command": "ms-copilot-extension.selectTutorials",
+        "title": "%teamstoolkit.commands.selectTutorials.title%",
+        "icon": "$(tasklist)",
+        "category": "Teams"
+      },
+      {
+        "command": "ms-copilot-extension.validate-getStarted-prerequisites",
+        "title": "Teams - Validate Get Started Prerequisites",
+        "enablement": "never"
+      },
+      {
+        "command": "ms-copilot-extension.addEnvironment",
+        "title": "%teamstoolkit.commands.createEnvironment.title%",
+        "enablement": "ms-copilot-extension.isTeamsFx && isWorkspaceTrusted && !ms-copilot-extension.commandLocked",
+        "category": "Teams"
+      },
+      {
+        "command": "ms-copilot-extension.addEnvironmentWithIcon",
+        "title": "%teamstoolkit.commands.createEnvironment.title%",
+        "icon": "$(add)",
+        "enablement": "ms-copilot-extension.isTeamsFx && isWorkspaceTrusted && !ms-copilot-extension.commandLocked"
+      },
+      {
+        "command": "ms-copilot-extension.build",
+        "title": "%teamstoolkit.commands.zipPackage.title%",
+        "enablement": "ms-copilot-extension.isTeamsFx && isWorkspaceTrusted && !ms-copilot-extension.commandLocked",
+        "category": "Teams"
+      },
+      {
+        "command": "ms-copilot-extension.checkProjectUpgrade",
+        "title": "%teamstoolkit.commands.upgradeProject.title%",
+        "enablement": "ms-copilot-extension.initialized && isWorkspaceTrusted",
+        "category": "Teams"
+      },
+      {
+        "command": "ms-copilot-extension.cmpAccounts",
+        "title": "%teamstoolkit.commands.accounts.title%",
+        "category": "Teams",
+        "enablement": "ms-copilot-extension.initialized"
+      },
+      {
+        "command": "ms-copilot-extension.deploy",
+        "title": "%teamstoolkit.commands.deploy.title%",
+        "enablement": "ms-copilot-extension.isTeamsFx && isWorkspaceTrusted && !ms-copilot-extension.commandLocked",
+        "category": "Teams"
+      },
+      {
+        "command": "ms-copilot-extension.updateAadAppManifest",
+        "title": "%teamstoolkit.commands.updateAadAppManifest.title%",
+        "enablement": "ms-copilot-extension.isTeamsFx && ms-copilot-extension.isAadManifestEnabled && isWorkspaceTrusted",
+        "category": "Teams"
+      },
+      {
+        "command": "ms-copilot-extension.migrateTeamsManifest",
+        "title": "%teamstoolkit.commands.migrateManifest.title%",
+        "enablement": "isWorkspaceTrusted",
+        "category": "Teams"
+      },
+      {
+        "command": "ms-copilot-extension.migrateTeamsTabApp",
+        "title": "%teamstoolkit.commands.migrateApp.title%",
+        "enablement": "isWorkspaceTrusted",
+        "category": "Teams"
+      },
+      {
+        "command": "ms-copilot-extension.openAppManagement",
+        "title": "%teamstoolkit.commands.devPortal.title%",
+        "enablement": "ms-copilot-extension.isTeamsFx && !ms-copilot-extension.isTDPIntegrationEnabled",
+        "category": "Teams"
+      },
+      {
+        "command": "ms-copilot-extension.publishInDeveloperPortal",
+        "title": "%teamstoolkit.commandsTreeViewProvider.publishInDevPortalTitle%",
+        "enablement": "ms-copilot-extension.isTeamsFx && isWorkspaceTrusted && ms-copilot-extension.isTDPIntegrationEnabled && !ms-copilot-extension.commandLocked",
+        "category": "Teams"
+      },
+      {
+        "command": "ms-copilot-extension.openReportIssues",
+        "title": "%teamstoolkit.commands.reportIssue.title%",
+        "enablement": "ms-copilot-extension.isTeamsFx",
+        "category": "Teams"
+      },
+      {
+        "command": "ms-copilot-extension.provision",
+        "title": "%teamstoolkit.commands.provision.title%",
+        "enablement": "ms-copilot-extension.isTeamsFx && isWorkspaceTrusted && !ms-copilot-extension.commandLocked",
+        "category": "Teams"
+      },
+      {
+        "command": "ms-copilot-extension.publish",
+        "title": "%teamstoolkit.commands.publish.title%",
+        "enablement": "ms-copilot-extension.isTeamsFx && isWorkspaceTrusted && !ms-copilot-extension.commandLocked",
+        "category": "Teams"
+      },
+      {
+        "command": "ms-copilot-extension.updatePreviewFile",
+        "title": "%teamstoolkit.commands.updateManifest.title%",
+        "enablement": "ms-copilot-extension.isTeamsFx && isWorkspaceTrusted",
+        "category": "Teams"
+      },
+      {
+        "command": "ms-copilot-extension.validateManifest",
+        "title": "%teamstoolkit.commands.validateManifest.title%",
+        "enablement": "ms-copilot-extension.isTeamsFx && isWorkspaceTrusted",
+        "category": "Teams"
+      },
+      {
+        "command": "ms-copilot-extension.azureAccountSettings",
+        "title": "%teamstoolkit.commands.azureAccountSettings.title%",
+        "icon": "$(settings-gear)"
+      },
+      {
+        "command": "ms-copilot-extension.createAccount",
+        "title": "%teamstoolkit.commands.createAccount.title%",
+        "icon": "$(add)"
+      },
+      {
+        "command": "ms-copilot-extension.deployManifestFromCtxMenu",
+        "title": "%teamstoolkit.commands.deployManifest.ctxMenu.title%"
+      },
+      {
+        "command": "ms-copilot-extension.grantPermission",
+        "title": "%teamstoolkit.commands.addAppOwner.title%",
+        "icon": "$(person-add)"
+      },
+      {
+        "command": "ms-copilot-extension.listCollaborator",
+        "title": "%teamstoolkit.commands.listAppOwner.title%",
+        "icon": "$(organization)"
+      },
+      {
+        "command": "ms-copilot-extension.manageCollaborator",
+        "title": "%teamstoolkit.commands.manageCollaborator.title%",
+        "enablement": "!ms-copilot-extension.commandLocked",
+        "icon": "$(organization)"
+      },
+      {
+        "command": "ms-copilot-extension.localdebug",
+        "title": "%teamstoolkit.commands.localDebug.title%",
+        "enablement": "!ms-copilot-extension.commandLocked",
+        "category": "Teams"
+      },
+      {
+        "command": "ms-copilot-extension.localdebugWithIcon",
+        "title": "%teamstoolkit.commands.localDebug.title%",
+        "icon": "$(debug-alt)"
+      },
+      {
+        "command": "ms-copilot-extension.m365AccountSettings",
+        "title": "%teamstoolkit.commands.m365AccountSettings.title%",
+        "icon": "$(settings-gear)"
+      },
+      {
+        "command": "ms-copilot-extension.openAccountLink",
+        "title": "%teamstoolkit.commands.accountsLink.title%",
+        "icon": "$(info)"
+      },
+      {
+        "command": "ms-copilot-extension.openLifecycleLink",
+        "title": "%teamstoolkit.commands.lifecycleLink.title%",
+        "icon": "$(info)"
+      },
+      {
+        "command": "ms-copilot-extension.openDevelopmentLink",
+        "title": "%teamstoolkit.commands.developmentLink.title%",
+        "icon": "$(info)"
+      },
+      {
+        "command": "ms-copilot-extension.openDocumentLink",
+        "title": "%teamstoolkit.commands.openDocumentLink.title%",
+        "icon": "$(info)"
+      },
+      {
+        "command": "ms-copilot-extension.openEnvLink",
+        "title": "%teamstoolkit.commands.environmentsLink.title%",
+        "icon": "$(info)"
+      },
+      {
+        "command": "ms-copilot-extension.openHelpFeedbackLink",
+        "title": "%teamstoolkit.commands.feedbackLink.title%",
+        "icon": "$(info)"
+      },
+      {
+        "command": "ms-copilot-extension.openPreviewAadFile",
+        "title": "%teamstoolkit.commands.previewAadManifest.title%",
+        "icon": "$(file-code)"
+      },
+      {
+        "command": "ms-copilot-extension.openResourceGroupInPortal",
+        "title": "%teamstoolkit.commands.openInPortal.title%",
+        "icon": "$(ports-open-browser-icon)"
+      },
+      {
+        "command": "ms-copilot-extension.openSchema",
+        "title": "%teamstoolkit.commands.openManifestSchema.title%",
+        "icon": "$(file-code)"
+      },
+      {
+        "command": "ms-copilot-extension.openSubscriptionInPortal",
+        "title": "%teamstoolkit.commands.openInPortal.title%",
+        "icon": "$(ports-open-browser-icon)"
+      },
+      {
+        "command": "ms-copilot-extension.preview",
+        "title": "%teamstoolkit.commands.previewApp.title%"
+      },
+      {
+        "command": "ms-copilot-extension.previewWithIcon",
+        "title": "%teamstoolkit.commands.previewApp.title%",
+        "icon": "$(run)"
+      },
+      {
+        "command": "ms-copilot-extension.refreshEnvironment",
+        "title": "%teamstoolkit.commands.refresh.title%",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "ms-copilot-extension.refreshSideloading",
+        "title": "%teamstoolkit.commands.refresh.title%",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "ms-copilot-extension.signOut",
+        "title": "%teamstoolkit.commands.signOut.title%",
+        "icon": "$(sign-out)"
+      },
+      {
+        "command": "ms-copilot-extension.openSurvey",
+        "title": "%teamstoolkit.commandsTreeViewProvider.openSurveyTitle%"
+      },
+      {
+        "command": "ms-copilot-extension.addWebpart",
+        "title": "%teamstoolkit.commmands.addWebpart.title%",
+        "enablement": "ms-copilot-extension.isTeamsFx && isWorkspaceTrusted && !ms-copilot-extension.commandLocked",
+        "category": "Teams"
+      }
+    ],
+    "taskDefinitions": [
+      {
+        "type": "teamsfx",
+        "required": [
+          "command"
+        ],
+        "properties": {
+          "command": {
+            "anyOf": [
+              {
+                "const": "debug-check-prerequisites",
+                "description": "%teamstoolkit.taskDefinitions.command.prerequisites.description%"
+              },
+              {
+                "const": "debug-start-local-tunnel",
+                "description": "%teamstoolkit.taskDefinitions.command.startLocalTunnel.description%"
+              },
+              {
+                "const": "provision",
+                "description": "%teamstoolkit.taskDefinitions.command.provision.description%"
+              },
+              {
+                "const": "deploy",
+                "description": "%teamstoolkit.taskDefinitions.command.deploy.description%"
+              },
+              {
+                "const": "launch-web-client",
+                "description": "%teamstoolkit.taskDefinitions.command.launchWebClient.description%"
+              }
+            ]
+          },
+          "args": {
+            "description": "The arguments of the command.",
+            "anyOf": [
+              {
+                "type": "object",
+                "required": [
+                  "prerequisites"
+                ],
+                "properties": {
+                  "prerequisites": {
+                    "type": "array",
+                    "description": "%teamstoolkit.taskDefinitions.args.prerequisites.title%",
+                    "items": {
+                      "type": "string",
+                      "anyOf": [
+                        {
+                          "const": "nodejs",
+                          "title": "%teamstoolkit.taskDefinitions.args.prerequisites.nodejsTitle%"
+                        },
+                        {
+                          "const": "m365Account",
+                          "title": "%teamstoolkit.taskDefinitions.args.prerequisites.m365AccountTitle%"
+                        },
+                        {
+                          "const": "portOccupancy",
+                          "title": "%teamstoolkit.taskDefinitions.args.prerequisites.portsTitle%"
+                        }
+                      ]
+                    }
+                  },
+                  "portOccupancy": {
+                    "type": "array",
+                    "items": {
+                      "type": "number"
+                    },
+                    "description": "%teamstoolkit.taskDefinitions.args.portOccupancy.title%"
+                  }
+                },
+                "if": {
+                  "properties": {
+                    "prerequisites": {
+                      "contains": {
+                        "const": "portOccupancy"
+                      }
+                    }
+                  }
+                },
+                "then": {
+                  "required": [
+                    "portOccupancy"
+                  ]
+                },
+                "else": {
+                  "not": {
+                    "required": [
+                      "portOccupancy"
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "required": [
+                  "type",
+                  "ports"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "description": "%teamstoolkit.taskDefinitions.args.type.title%",
+                    "const": "dev-tunnel"
+                  },
+                  "ports": {
+                    "type": "array",
+                    "description": "%teamstoolkit.taskDefinitions.args.ports.title%",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "portNumber",
+                        "protocol"
+                      ],
+                      "properties": {
+                        "portNumber": {
+                          "type": "integer",
+                          "description": "%teamstoolkit.taskDefinitions.args.ports.portNumber.title%"
+                        },
+                        "protocol": {
+                          "type": "string",
+                          "description": "%teamstoolkit.taskDefinitions.args.ports.protocol.title%",
+                          "oneOf": [
+                            {
+                              "const": "http"
+                            },
+                            {
+                              "const": "https"
+                            }
+                          ]
+                        },
+                        "access": {
+                          "type": "string",
+                          "description": "%teamstoolkit.taskDefinitions.args.ports.access.title%",
+                          "oneOf": [
+                            {
+                              "const": "public"
+                            },
+                            {
+                              "const": "private"
+                            }
+                          ],
+                          "default": "private"
+                        },
+                        "writeToEnvironmentFile": {
+                          "type": "object",
+                          "description": "%teamstoolkit.taskDefinitions.args.writeToEnvironmentFile.title%",
+                          "properties": {
+                            "domain": {
+                              "type": "string",
+                              "description": "%teamstoolkit.taskDefinitions.args.writeToEnvironmentFile.domain.title%"
+                            },
+                            "endpoint": {
+                              "type": "string",
+                              "description": "%teamstoolkit.taskDefinitions.args.writeToEnvironmentFile.endpoint.title%"
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "env": {
+                    "type": "string",
+                    "description": "%teamstoolkit.taskDefinitions.args.env.title%",
+                    "anyOf": [
+                      {
+                        "const": "local"
+                      },
+                      {}
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "required": [
+                  "env"
+                ],
+                "properties": {
+                  "env": {
+                    "type": "string",
+                    "description": "%teamstoolkit.taskDefinitions.args.env.title%",
+                    "anyOf": [
+                      {
+                        "const": "local"
+                      },
+                      {}
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "problemMatchers": [
+      {
+        "name": "ms-copilot-frontend-watch",
+        "label": "TeamsFx Frontend Problems",
+        "owner": "Teams Toolkit",
+        "source": "teamsfx",
+        "applyTo": "allDocuments",
+        "fileLocation": [
+          "relative",
+          "${workspaceFolder}/tabs"
+        ],
+        "pattern": [
+          {
+            "regexp": "^.*?\\.js$",
+            "file": 0
+          },
+          {
+            "regexp": "^\\s*Line\\s+(\\d+):(\\d+):\\s+(.*)$",
+            "line": 1,
+            "column": 2,
+            "message": 3
+          }
+        ],
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*",
+          "endsPattern": "Compiled|Failed"
+        },
+        "severity": "error"
+      },
+      {
+        "name": "ms-copilot-backend-watch",
+        "label": "TeamsFx Backend Problems",
+        "owner": "Teams Toolkit",
+        "source": "teamsfx",
+        "applyTo": "allDocuments",
+        "fileLocation": [
+          "relative",
+          "${workspaceFolder}/api"
+        ],
+        "pattern": [
+          {
+            "regexp": "^.*$",
+            "file": 0,
+            "location": 1,
+            "message": 2
+          }
+        ],
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "^.*(Job host stopped|signaling restart).*$",
+          "endsPattern": "^.*(Worker process started and initialized|Host lock lease acquired by instance ID).*$"
+        }
+      },
+      {
+        "name": "ms-copilot-func-hosted-bot-watch",
+        "label": "TeamsFx Azure Functions Hosted Bot Problems",
+        "owner": "Teams Toolkit",
+        "source": "teamsfx",
+        "applyTo": "allDocuments",
+        "fileLocation": [
+          "relative",
+          "${workspaceFolder}/bot"
+        ],
+        "pattern": [
+          {
+            "regexp": "^.*$",
+            "file": 0,
+            "location": 1,
+            "message": 2
+          }
+        ],
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "^.*(Job host stopped|signaling restart).*$",
+          "endsPattern": "^.*(Worker process started and initialized|Host lock lease acquired by instance ID).*$"
+        }
+      },
+      {
+        "name": "ms-copilot-auth-watch",
+        "label": "TeamsFx SimpleAuth Problems",
+        "owner": "Teams Toolkit",
+        "source": "teamsfx",
+        "applyTo": "allDocuments",
+        "fileLocation": [
+          "relative",
+          "${workspaceFolder}"
+        ],
+        "pattern": [
+          {
+            "regexp": "^.*$",
+            "file": 0,
+            "location": 1,
+            "message": 2
+          }
+        ],
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*",
+          "endsPattern": ".*"
+        }
+      },
+      {
+        "name": "ms-copilot-ngrok-watch",
+        "label": "TeamsFx Ngrok Problems",
+        "owner": "Teams Toolkit",
+        "source": "teamsfx",
+        "applyTo": "allDocuments",
+        "fileLocation": [
+          "relative",
+          "${workspaceFolder}"
+        ],
+        "pattern": [
+          {
+            "regexp": "^.*$",
+            "file": 0,
+            "location": 1,
+            "message": 2
+          }
+        ],
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "starting web service",
+          "endsPattern": "started tunnel|failed to reconnect session"
+        }
+      },
+      {
+        "name": "ms-copilot-local-tunnel-watch",
+        "label": "TeamsFx Local Tunnel Problems",
+        "owner": "Teams Toolkit",
+        "source": "teamsfx",
+        "applyTo": "allDocuments",
+        "fileLocation": [
+          "relative",
+          "${workspaceFolder}"
+        ],
+        "pattern": [
+          {
+            "regexp": "^.*$",
+            "file": 0,
+            "location": 1,
+            "message": 2
+          }
+        ],
+        "background": {
+          "beginsPattern": "Forwarding URL https?://.* to https?://.*",
+          "endsPattern": "Local tunnel service is started successfully"
+        }
+      },
+      {
+        "name": "ms-copilot-bot-watch",
+        "label": "TeamsFx Bot Problems",
+        "owner": "Teams Toolkit",
+        "source": "teamsfx",
+        "applyTo": "allDocuments",
+        "fileLocation": [
+          "relative",
+          "${workspaceFolder}/bot"
+        ],
+        "pattern": [
+          {
+            "regexp": "^.*$",
+            "file": 0,
+            "location": 1,
+            "message": 2
+          }
+        ],
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "[nodemon] starting",
+          "endsPattern": "listening|[nodemon] app crashed"
+        }
+      }
+    ],
+    "languages": [
+      {
+        "id": "ms-copilot-toolkit-output"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "ms-copilot-toolkit-output",
+        "scopeName": "ms-copilot-toolkit.output",
+        "path": "./syntaxes/ms-copilot-toolkit-output.tmLanguage"
+      }
+    ],
+    "walkthroughs": [
+      {
+        "id": "teamsToolkitGetStarted",
+        "title": "%teamstoolkit.walkthroughs.title%",
+        "description": "%teamstoolkit.walkthroughs.description%",
+        "steps": [
+          {
+            "id": "teamsToolkitEnvironment",
+            "title": "%teamstoolkit.walkthroughs.steps.teamsToolkitEnvironment.title%",
+            "description": "%teamstoolkit.walkthroughs.steps.teamsToolkitEnvironment.description%",
+            "media": {
+              "svg": "media/walkthrough/Prerequisites.svg",
+              "altText": "%teamstoolkit.walkthroughs.steps.teamsToolkitEnvironment.title%"
+            }
+          },
+          {
+            "id": "teamsToolkitBuildApp",
+            "title": "%teamstoolkit.walkthroughs.steps.teamsToolkitBuildApp.title%",
+            "description": "%teamstoolkit.walkthroughs.steps.teamsToolkitBuildApp.description%",
+            "media": {
+              "svg": "media/walkthrough/Create.svg",
+              "altText": "%teamstoolkit.walkthroughs.steps.teamsToolkitBuildApp.title%"
+            }
+          },
+          {
+            "id": "teamsToolkitCreateFreeAccount",
+            "title": "%teamstoolkit.walkthroughs.steps.teamsToolkitCreateFreeAccount.title%",
+            "description": "%teamstoolkit.walkthroughs.steps.teamsToolkitCreateFreeAccount.description%",
+            "media": {
+              "markdown": "media/itp/itp.md"
+            }
+          },
+          {
+            "id": "teamsToolkitPreview",
+            "title": "%teamstoolkit.walkthroughs.steps.teamsToolkitPreview.title%",
+            "description": "%teamstoolkit.walkthroughs.steps.teamsToolkitPreview.description%",
+            "media": {
+              "svg": "media/walkthrough/F5.svg",
+              "altText": "%teamstoolkit.walkthroughs.steps.teamsToolkitPreview.title%"
+            }
+          },
+          {
+            "id": "teamsToolkitDeploy",
+            "title": "%teamstoolkit.walkthroughs.steps.teamsToolkitDeploy.title%",
+            "description": "%teamstoolkit.walkthroughs.steps.teamsToolkitDeploy.description%",
+            "media": {
+              "svg": "media/walkthrough/Deployment.svg",
+              "altText": "%teamstoolkit.walkthroughs.steps.teamsToolkitDeploy.title%"
+            }
+          },
+          {
+            "id": "teamsToolkitExploreMore",
+            "title": "%teamstoolkit.walkthroughs.steps.teamsToolkitExploreMore.title%",
+            "description": "%teamstoolkit.walkthroughs.steps.teamsToolkitExploreMore.description%",
+            "media": {
+              "svg": "media/walkthrough/whatsnext.svg",
+              "altText": "%teamstoolkit.walkthroughs.steps.teamsToolkitExploreMore.altText%"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "scripts": {
+    "lint:staged": "lint-staged",
+    "vscode:prepublish": "rimraf out && npm run package",
+    "copy-files": "copyfiles -u 1 src/**/*.html src/**/*.css out/src/",
+    "copy-md-files": "copyfiles WHATISNEW.md out/resource",
+    "compile": "tsc -p ./ && npm run copy-files && npm run copy-md-files",
+    "build": "rimraf out && webpack --mode development --config ./webpack.config.js && npm run compile",
+    "build-failpoint": "rimraf out && npx ttsc -p ./",
+    "watch": "webpack --watch --devtool nosources-source-map --info-verbosity verbose --config ./webpack.config.js",
+    "package": "rimraf out && webpack --mode production --config ./webpack.config.js",
+    "test-compile": "tsc -p ./",
+    "test-watch": "tsc -watch -p ./",
+    "pretest": "npm run lint && npm run check-format && npm run test-compile",
+    "test:unit": "rimraf out && rimraf coverage && npm run compile && nyc mocha --config .mocharc.json ",
+    "test:integration": "echo 'to be implementd'",
+    "test:e2e": "echo 'to be implementd'",
+    "check-format": "prettier --list-different --config .prettierrc.js --ignore-path .prettierignore \"src/**/*.ts\" \"test/**/*.ts\" \"*.{js,json}\"",
+    "format": "prettier --write --config .prettierrc.js --ignore-path .prettierignore \"src/**/*.ts\" \"test/**/*.ts\" \"*.{js,json}\"",
+    "lint:fix": "eslint --config .eslintrc.js package.json src test --ext .ts --fix --fix-type [problem,suggestion]",
+    "lint": "eslint \"src/**/*.ts\" \"test/**/*.ts\"",
+    "check-sensitive": "npx eslint --plugin 'no-secrets' --cache --ignore-pattern 'package.json' --ignore-pattern 'package-lock.json'",
+    "precommit": "npm run check-sensitive && lint-staged",
+    "updateFont": "node ./scripts/updateFont.js",
+    "previewFont": "start ./media/font/teamstoolkit.html",
+    "version": "bash ../../.github/scripts/vsc-version.sh"
+  },
+  "devDependencies": {
+    "@azure/arm-subscriptions": "^5.0.0",
+    "@azure/core-auth": "^1.4.0",
+    "@azure/identity-vscode": "^1.0.0",
+    "@azure/ms-rest-azure-env": "^2.0.0",
+    "@fluentui/react": "^8.5.1",
+    "@istanbuljs/nyc-config-typescript": "^1.0.2",
+    "@microsoft/eslint-plugin-teamsfx": "^0.0.3",
+    "@types/chai": "^4.2.14",
+    "@types/chai-as-promised": "^7.1.3",
+    "@types/chai-spies": "^1.0.3",
+    "@types/detect-port": "^1.3.2",
+    "@types/express": "^4.17.14",
+    "@types/fs-extra": "^9.0.5",
+    "@types/jscodeshift": "^0.11.2",
+    "@types/keytar": "^4.4.2",
+    "@types/lodash": "^4.14.181",
+    "@types/mocha": "^8.0.4",
+    "@types/node": "^14.14.21",
+    "@types/react": "^17.0.3",
+    "@types/react-copy-to-clipboard": "^5.0.4",
+    "@types/react-dom": "^17.0.2",
+    "@types/react-router-dom": "^5.1.7",
+    "@types/react-syntax-highlighter": "^15.5.5",
+    "@types/sinon": "^9.0.9",
+    "@types/uuid": "^8.3.0",
+    "@types/validator": "^13.1.1",
+    "@types/vscode": "1.66.0",
+    "@typescript-eslint/eslint-plugin": "^5.0.0",
+    "@typescript-eslint/parser": "^5.0.0",
+    "@vscode/codicons": "0.0.33",
+    "ast-types": "^0.14.2",
+    "chai": "^4.2.0",
+    "chai-as-promised": "^7.1.1",
+    "chai-spies": "^1.0.0",
+    "copy-webpack-plugin": "^6.4.1",
+    "copyfiles": "^2.4.1",
+    "css-loader": "^5.1.3",
+    "detect-port": "^1.3.0",
+    "eslint": "^8.1.0",
+    "eslint-plugin-import": "^2.25.2",
+    "eslint-plugin-no-secrets": "^0.8.9",
+    "eslint-plugin-prettier": "^4.0.0",
+    "fs-extra": "^9.0.1",
+    "html-webpack-plugin": "^5.3.1",
+    "kill-port-process": "^3.0.1",
+    "lint-staged": "^11.2.6",
+    "mocha": "^10.0.0",
+    "mocha-multi-reporters": "^1.5.1",
+    "mock-require": "^3.0.3",
+    "nyc": "^15.1.0",
+    "prettier": "^2.4.1",
+    "react": "^17.0.2",
+    "react-dom": "^17.0.2",
+    "react-intl": "^5.13.5",
+    "react-router-dom": "^5.2.0",
+    "reflect-metadata": "^0.1.13",
+    "rimraf": "^3.0.2",
+    "sass": "^1.32.8",
+    "sass-loader": "^10.0.1",
+    "sinon": "^9.2.2",
+    "style-loader": "^2.0.0",
+    "svgtofont": "^3.23.1",
+    "terser-webpack-plugin": "^4.2.3",
+    "ts-loader": "^8.0.3",
+    "ts-node": "^9.1.1",
+    "ts-sinon": "^2.0.2",
+    "ttypescript": "^1.5.12",
+    "typemoq": "^1.3.1",
+    "typescript": "4.3.5",
+    "umd-compat-loader": "^2.1.2",
+    "url-loader": "^4.1.1",
+    "uuid": "^8.3.2",
+    "verdaccio": "^5.25.0",
+    "webpack": "^5.38.1",
+    "webpack-cli": "^4.7.2"
+  },
+  "dependencies": {
+    "@azure/identity": "^3.1.3",
+    "@azure/ms-rest-nodeauth": "^3.1.1",
+    "@azure/msal-node": "^1.14.6",
+    "@microsoft/dev-tunnels-connections": "~1.0.7360",
+    "@microsoft/dev-tunnels-contracts": "~1.0.7360",
+    "@microsoft/dev-tunnels-management": "~1.0.7360",
+    "@microsoft/dev-tunnels-ssh": "~3.11.1",
+    "@microsoft/teamsfx-api": "^0.22.3",
+    "@microsoft/teamsfx-core": "^2.0.2",
+    "@npmcli/package-json": "^1.0.1",
+    "@vscode/extension-telemetry": "^0.6.2",
+    "@vscode/webview-ui-toolkit": "^0.9.3",
+    "async-mutex": "^0.3.1",
+    "dotenv": "^8.2.0",
+    "express": "^4.18.2",
+    "jscodeshift": "^0.14.0",
+    "jsonc-parser": "^3.0.0",
+    "lodash": "^4.17.21",
+    "log4js": "^6.3.0",
+    "node-rsa": "^1.1.1",
+    "react-collapsible": "^2.10.0",
+    "react-copy-to-clipboard": "^5.1.0",
+    "react-syntax-highlighter": "^15.5.0",
+    "validator": "^13.7.0",
+    "vscode-tas-client": "^0.1.47"
+  },
+  "extensionDependencies": [
+    "ms-vscode.azure-account",
+    "redhat.vscode-yaml"
+  ],
+  "gitHead": "7d60c0765c0ea8c023a26c10d1c93001c597afbb",
+  "publishConfig": {
+    "access": "public"
+  },
+  "lint-staged": {
+    "*.{js,jsx,css,ts,tsx}": [
+      "npx eslint --cache --fix --quiet"
+    ]
+  }
+}

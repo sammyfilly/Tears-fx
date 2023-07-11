@@ -1,0 +1,974 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
+"use strict";
+
+import * as vscode from "vscode";
+
+import {
+  AdaptiveCardsFolderName,
+  AppPackageFolderName,
+  BuildFolderName,
+  ConfigFolderName,
+  FxError,
+  Result,
+} from "@microsoft/teamsfx-api";
+import { AuthSvcScopes, Correlator, VersionState, setRegion } from "@microsoft/teamsfx-core";
+
+import {
+  AadAppTemplateCodeLensProvider,
+  AdaptiveCardCodeLensProvider,
+  CryptoCodeLensProvider,
+  ManifestTemplateCodeLensProvider,
+  PermissionsJsonFileCodeLensProvider,
+  ProjectSettingsCodeLensProvider,
+} from "./codeLensProvider";
+import commandController from "./commandController";
+import AzureAccountManager from "./commonlib/azureLogin";
+import VsCodeLogInstance from "./commonlib/log";
+import M365TokenInstance from "./commonlib/m365Login";
+import { openWelcomePageAfterExtensionInstallation } from "./controls/openWelcomePage";
+import { getLocalDebugSessionId, startLocalDebugSession } from "./debug/commonUtils";
+import { disableRunIcon, registerRunIcon } from "./debug/runIconHandler";
+import { TeamsfxDebugProvider } from "./debug/teamsfxDebugProvider";
+import { registerTeamsfxTaskAndDebugEvents } from "./debug/teamsfxTaskHandler";
+import { TeamsfxTaskProvider } from "./debug/teamsfxTaskProvider";
+import * as exp from "./exp";
+import { TreatmentVariableValue, TreatmentVariables } from "./exp/treatmentVariables";
+import {
+  initializeGlobalVariables,
+  isExistingUser,
+  isSPFxProject,
+  isTeamsFxProject,
+  setUriEventHandler,
+  unsetIsTeamsFxProject,
+  workspaceUri,
+} from "./globalVariables";
+import * as handlers from "./handlers";
+import { ManifestTemplateHoverProvider } from "./hoverProvider";
+import { VsCodeUI } from "./qm/vsc_ui";
+import { ExtTelemetry } from "./telemetry/extTelemetry";
+import { TelemetryEvent, TelemetryTriggerFrom } from "./telemetry/extTelemetryEvents";
+import accountTreeViewProviderInstance from "./treeview/account/accountTreeViewProvider";
+import TreeViewManagerInstance from "./treeview/treeViewManager";
+import { UriHandler } from "./uriHandler";
+import { delay, isM365Project, syncFeatureFlags } from "./utils/commonUtils";
+import { loadLocalizedStrings } from "./utils/localizeUtils";
+import { ExtensionSurvey } from "./utils/survey";
+import { ExtensionUpgrade } from "./utils/upgrade";
+
+export let VS_CODE_UI: VsCodeUI;
+
+export async function activate(context: vscode.ExtensionContext) {
+  // load the feature flags.
+  syncFeatureFlags();
+
+  context.subscriptions.push(new ExtTelemetry.Reporter(context));
+
+  VS_CODE_UI = new VsCodeUI(context);
+  await initializeGlobalVariables(context);
+  loadLocalizedStrings();
+
+  const uriHandler = new UriHandler();
+  setUriEventHandler(uriHandler);
+  context.subscriptions.push(vscode.window.registerUriHandler(uriHandler));
+
+  registerActivateCommands(context);
+
+  registerInternalCommands(context);
+
+  if (isTeamsFxProject) {
+    activateTeamsFxRegistration(context);
+  }
+
+  // Call activate function of toolkit core.
+  handlers.activate();
+
+  // Init VSC context key
+  await initializeContextKey(context, isTeamsFxProject);
+
+  // UI is ready to show & interact
+  await vscode.commands.executeCommand(
+    "setContext",
+    "ms-copilot-extension.isTeamsFx",
+    isTeamsFxProject
+  );
+
+  VsCodeLogInstance.info("Teams Toolkit extension is now active!");
+
+  // Don't wait this async method to let it run in background.
+  runBackgroundAsyncTasks(context, isTeamsFxProject);
+  await vscode.commands.executeCommand("setContext", "ms-copilot-extension.initialized", true);
+}
+
+// this method is called when your extension is deactivated
+export async function deactivate() {
+  await ExtTelemetry.cacheTelemetryEventAsync(TelemetryEvent.Deactivate);
+  await ExtTelemetry.dispose();
+  handlers.cmdHdlDisposeTreeView();
+  disableRunIcon();
+}
+
+function activateTeamsFxRegistration(context: vscode.ExtensionContext) {
+  registerTreeViewCommandsInDevelopment(context);
+  registerTreeViewCommandsInLifecycle(context);
+  registerTreeViewCommandsInHelper(context);
+  registerTeamsFxCommands(context);
+  registerMenuCommands(context);
+  handlers.registerAccountMenuCommands(context);
+
+  TreeViewManagerInstance.registerTreeViews(context);
+  accountTreeViewProviderInstance.subscribeToStatusChanges({
+    azureAccountProvider: AzureAccountManager,
+    m365TokenProvider: M365TokenInstance,
+  });
+  // Set region for M365 account every
+  M365TokenInstance.setStatusChangeMap(
+    "set-region",
+    { scopes: AuthSvcScopes },
+    async (status, token, accountInfo) => {
+      if (status === "SignedIn") {
+        const tokenRes = await M365TokenInstance.getAccessToken({ scopes: AuthSvcScopes });
+        if (tokenRes.isOk()) {
+          setRegion(tokenRes.value);
+        }
+      }
+    }
+  );
+
+  if (vscode.workspace.isTrusted) {
+    registerCodelensAndHoverProviders(context);
+  }
+
+  registerDebugConfigProviders(context);
+
+  // Register task and debug event handlers, as well as sending telemetries
+  registerTeamsfxTaskAndDebugEvents();
+
+  registerRunIcon();
+
+  // Register teamsfx task provider
+  const taskProvider: TeamsfxTaskProvider = new TeamsfxTaskProvider();
+  context.subscriptions.push(
+    vscode.tasks.registerTaskProvider(TeamsfxTaskProvider.type, taskProvider)
+  );
+
+  context.subscriptions.push(
+    vscode.workspace.onWillSaveTextDocument(handlers.saveTextDocumentHandler)
+  );
+}
+
+/**
+ * Commands that always show in command palette. They will activate extension and wait for its completion.
+ * They are usually used in welcome view and walkthrough.
+ */
+function registerActivateCommands(context: vscode.ExtensionContext) {
+  // non-teamsfx project upgrade
+  const checkUpgradeCmd = vscode.commands.registerCommand(
+    "ms-copilot-extension.checkProjectUpgrade",
+    (...args) => Correlator.run(handlers.checkUpgrade, args)
+  );
+  context.subscriptions.push(checkUpgradeCmd);
+
+  // user can manage account in non-teamsfx project
+  const cmpAccountsCmd = vscode.commands.registerCommand(
+    "ms-copilot-extension.cmpAccounts",
+    (...args) => Correlator.run(handlers.cmpAccountsHandler, args)
+  );
+  context.subscriptions.push(cmpAccountsCmd);
+
+  // Create a new Teams app
+  registerInCommandController(
+    context,
+    "ms-copilot-extension.create",
+    handlers.createNewProjectHandler,
+    "createProject"
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      "ms-copilot-extension.createFromWalkthrough",
+      async (...args) => {
+        const targetUri = await Correlator.run(handlers.createProjectFromWalkthroughHandler, args);
+        if (targetUri.isOk()) {
+          await handlers.updateAutoOpenGlobalKey(true, false, targetUri.value, args);
+          await ExtTelemetry.dispose();
+          await delay(2000);
+          return { openFolder: targetUri.value };
+        }
+      }
+    )
+  );
+
+  // Show lifecycle view
+  const openLifecycleTreeview = vscode.commands.registerCommand(
+    "ms-copilot-extension.openLifecycleTreeview",
+    (...args) => Correlator.run(handlers.openLifecycleTreeview, args)
+  );
+  context.subscriptions.push(openLifecycleTreeview);
+
+  // Documentation
+  registerInCommandController(
+    context,
+    "ms-copilot-extension.openDocument",
+    handlers.openDocumentHandler
+  );
+
+  // README
+  const openReadMeCmd = vscode.commands.registerCommand(
+    "ms-copilot-extension.openReadMe",
+    (...args) => Correlator.run(handlers.openReadMeHandler, args)
+  );
+  context.subscriptions.push(openReadMeCmd);
+
+  // View samples
+  registerInCommandController(
+    context,
+    "ms-copilot-extension.openSamples",
+    handlers.openSamplesHandler
+  );
+
+  // Quick start
+  registerInCommandController(
+    context,
+    "ms-copilot-extension.openWelcome",
+    handlers.openWelcomeHandler
+  );
+
+  // Tutorials
+  registerInCommandController(
+    context,
+    "ms-copilot-extension.selectTutorials",
+    handlers.selectTutorialsHandler
+  );
+
+  const signinM365 = vscode.commands.registerCommand("ms-copilot-extension.signinM365", (...args) =>
+    Correlator.run(handlers.signinM365Callback, args)
+  );
+  context.subscriptions.push(signinM365);
+
+  // Prerequisites check
+  const validateGetStartedPrerequisitesCmd = vscode.commands.registerCommand(
+    "ms-copilot-extension.validate-getStarted-prerequisites",
+    (...args) => Correlator.run(handlers.validateGetStartedPrerequisitesHandler, args)
+  );
+  context.subscriptions.push(validateGetStartedPrerequisitesCmd);
+
+  // Upgrade command to update Teams manifest
+  const migrateTeamsManifestCmd = vscode.commands.registerCommand(
+    "ms-copilot-extension.migrateTeamsManifest",
+    () => Correlator.run(handlers.migrateTeamsManifestHandler)
+  );
+  context.subscriptions.push(migrateTeamsManifestCmd);
+
+  // Upgrade command to update Teams Client SDK
+  const migrateTeamsTabAppCmd = vscode.commands.registerCommand(
+    "ms-copilot-extension.migrateTeamsTabApp",
+    () => Correlator.run(handlers.migrateTeamsTabAppHandler)
+  );
+  context.subscriptions.push(migrateTeamsTabAppCmd);
+}
+
+/**
+ * Internal commands that will not show in command palette and only be called via executeCommand()
+ */
+function registerInternalCommands(context: vscode.ExtensionContext) {
+  registerInCommandController(
+    context,
+    "ms-copilot-extension.openFromTdp",
+    handlers.scaffoldFromDeveloperPortalHandler,
+    "openFromTdp"
+  );
+
+  const showOutputChannel = vscode.commands.registerCommand(
+    "ms-copilot-extension.showOutputChannel",
+    (...args) => Correlator.run(handlers.showOutputChannel, args)
+  );
+  context.subscriptions.push(showOutputChannel);
+
+  // Register backend extensions install command
+  const backendExtensionsInstallCmd = vscode.commands.registerCommand(
+    "ms-copilot-extension.backend-extensions-install",
+    () => Correlator.runWithId(getLocalDebugSessionId(), handlers.backendExtensionsInstallHandler)
+  );
+  context.subscriptions.push(backendExtensionsInstallCmd);
+
+  // Referenced by tasks.json
+  const getPathDelimiterCmd = vscode.commands.registerCommand(
+    "ms-copilot-extension.get-path-delimiter",
+    () => Correlator.run(handlers.getPathDelimiterHandler)
+  );
+  context.subscriptions.push(getPathDelimiterCmd);
+
+  const getDotnetPathCmd = vscode.commands.registerCommand(
+    "ms-copilot-extension.get-dotnet-path",
+    () => Correlator.run(handlers.getDotnetPathHandler)
+  );
+  context.subscriptions.push(getDotnetPathCmd);
+
+  const installAppInTeamsCmd = vscode.commands.registerCommand(
+    "ms-copilot-extension.install-app-in-teams",
+    () => Correlator.runWithId(getLocalDebugSessionId(), handlers.installAppInTeams)
+  );
+  context.subscriptions.push(installAppInTeamsCmd);
+
+  const openSurveyCmd = vscode.commands.registerCommand(
+    "ms-copilot-extension.openSurvey",
+    (...args) => Correlator.run(handlers.openSurveyHandler, [TelemetryTriggerFrom.TreeView])
+  );
+  context.subscriptions.push(openSurveyCmd);
+
+  const openTutorial = vscode.commands.registerCommand(
+    "ms-copilot-extension.openTutorial",
+    (...args) =>
+      Correlator.run(handlers.openTutorialHandler, [TelemetryTriggerFrom.QuickPick, ...args])
+  );
+  context.subscriptions.push(openTutorial);
+
+  const preDebugCheckCmd = vscode.commands.registerCommand(
+    "ms-copilot-extension.pre-debug-check",
+    () => Correlator.runWithId(getLocalDebugSessionId(), handlers.preDebugCheckHandler)
+  );
+  context.subscriptions.push(preDebugCheckCmd);
+
+  // localdebug session starts from environment checker
+  const validateDependenciesCmd = vscode.commands.registerCommand(
+    "ms-copilot-extension.validate-dependencies",
+    () => Correlator.runWithId(startLocalDebugSession(), handlers.validateAzureDependenciesHandler)
+  );
+  context.subscriptions.push(validateDependenciesCmd);
+
+  // localdebug session starts from prerequisites checker
+  const validatePrerequisitesCmd = vscode.commands.registerCommand(
+    "ms-copilot-extension.validate-local-prerequisites",
+    // Do not run with Correlator because it is handled inside `validateLocalPrerequisitesHandler()`.
+    handlers.validateLocalPrerequisitesHandler
+  );
+  context.subscriptions.push(validatePrerequisitesCmd);
+
+  // localdebug session starts from environment checker
+  const validateSpfxDependenciesCmd = vscode.commands.registerCommand(
+    "ms-copilot-extension.validate-spfx-dependencies",
+    () => Correlator.runWithId(startLocalDebugSession(), handlers.validateSpfxDependenciesHandler)
+  );
+  context.subscriptions.push(validateSpfxDependenciesCmd);
+
+  const signinAzure = vscode.commands.registerCommand(
+    "ms-copilot-extension.signinAzure",
+    (...args) => Correlator.run(handlers.signinAzureCallback, args)
+  );
+  context.subscriptions.push(signinAzure);
+}
+
+function registerTreeViewCommandsInDevelopment(context: vscode.ExtensionContext) {
+  // Open adaptive card
+  registerInCommandController(
+    context,
+    "ms-copilot-extension.OpenAdaptiveCardExt",
+    handlers.openAdaptiveCardExt
+  );
+
+  registerInCommandController(
+    context,
+    "ms-copilot-extension.addWebpart",
+    handlers.addWebpart,
+    "addWebpart"
+  );
+}
+
+function registerTreeViewCommandsInLifecycle(context: vscode.ExtensionContext) {
+  // Provision in the cloud
+  registerInCommandController(
+    context,
+    "ms-copilot-extension.provision",
+    handlers.provisionHandler,
+    "provision"
+  );
+
+  // Zip Teams metadata package
+  registerInCommandController(
+    context,
+    "ms-copilot-extension.build",
+    handlers.buildPackageHandler,
+    "buildPackage"
+  );
+
+  // Deploy to the cloud
+  registerInCommandController(
+    context,
+    "ms-copilot-extension.deploy",
+    handlers.deployHandler,
+    "deploy"
+  );
+
+  // Publish to Teams
+  registerInCommandController(
+    context,
+    "ms-copilot-extension.publish",
+    handlers.publishHandler,
+    "publish"
+  );
+
+  // Publish in Developer Portal
+  registerInCommandController(
+    context,
+    "ms-copilot-extension.publishInDeveloperPortal",
+    handlers.publishInDeveloperPortalHandler,
+    "publishInDeveloperPortal"
+  );
+
+  // Developer Portal for Teams
+  registerInCommandController(
+    context,
+    "ms-copilot-extension.openAppManagement",
+    handlers.openAppManagement
+  );
+}
+
+function registerTreeViewCommandsInHelper(context: vscode.ExtensionContext) {
+  // Report issues on GitHub
+  registerInCommandController(
+    context,
+    "ms-copilot-extension.openReportIssues",
+    handlers.openReportIssues
+  );
+}
+
+/**
+ * TeamsFx related commands, they will show in command palette after extension is initialized
+ */
+function registerTeamsFxCommands(context: vscode.ExtensionContext) {
+  const createNewEnvironment = vscode.commands.registerCommand(
+    // TODO: fix trigger from
+    "ms-copilot-extension.addEnvironment",
+    (...args) => Correlator.run(handlers.createNewEnvironment, args)
+  );
+  context.subscriptions.push(createNewEnvironment);
+
+  const updateAadAppManifest = vscode.commands.registerCommand(
+    "ms-copilot-extension.updateAadAppManifest",
+    (...args) => Correlator.run(handlers.updateAadAppManifest, args)
+  );
+  context.subscriptions.push(updateAadAppManifest);
+
+  const updateManifestCmd = vscode.commands.registerCommand(
+    "ms-copilot-extension.updatePreviewFile",
+    (...args) => Correlator.run(handlers.updatePreviewManifest, args)
+  );
+  context.subscriptions.push(updateManifestCmd);
+
+  const validateManifestCmd = vscode.commands.registerCommand(
+    "ms-copilot-extension.validateManifest",
+    (...args) => Correlator.run(handlers.validateManifestHandler, args)
+  );
+  context.subscriptions.push(validateManifestCmd);
+
+  const openBotManagementCmd = vscode.commands.registerCommand(
+    "ms-copilot-extension.openBotManagement",
+    (...args) => Correlator.run(handlers.openBotManagement, args)
+  );
+  context.subscriptions.push(openBotManagementCmd);
+
+  const decryptCmd = vscode.commands.registerCommand(
+    "ms-copilot-extension.decryptSecret",
+    (cipher, selection) => Correlator.run(handlers.decryptSecret, cipher, selection)
+  );
+  context.subscriptions.push(decryptCmd);
+
+  const openConfigStateCmd = vscode.commands.registerCommand(
+    "ms-copilot-extension.openConfigState",
+    (...args) => Correlator.run(handlers.openConfigStateFile, args)
+  );
+  context.subscriptions.push(openConfigStateCmd);
+
+  const editManifestTemplateCmd = vscode.commands.registerCommand(
+    "ms-copilot-extension.editManifestTemplate",
+    (...args) => Correlator.run(handlers.editManifestTemplate, args)
+  );
+  context.subscriptions.push(editManifestTemplateCmd);
+
+  const editAadManifestTemplateCmd = vscode.commands.registerCommand(
+    "ms-copilot-extension.editAadManifestTemplate",
+    (...args) => Correlator.run(handlers.editAadManifestTemplate, args)
+  );
+  context.subscriptions.push(editAadManifestTemplateCmd);
+
+  const preview = vscode.commands.registerCommand("ms-copilot-extension.preview", async (node) => {
+    await Correlator.run(handlers.treeViewPreviewHandler, node.identifier);
+  });
+  context.subscriptions.push(preview);
+
+  registerInCommandController(
+    context,
+    "ms-copilot-extension.openFolder",
+    handlers.openFolderHandler
+  );
+
+  const checkSideloading = vscode.commands.registerCommand(
+    "ms-copilot-extension.checkSideloading",
+    (...args) => Correlator.run(handlers.checkSideloadingCallback, args)
+  );
+  context.subscriptions.push(checkSideloading);
+}
+
+/**
+ * Commands used in menus, e.g. Explorer context & view item title/context
+ */
+function registerMenuCommands(context: vscode.ExtensionContext) {
+  const createNewEnvironmentWithIcon = vscode.commands.registerCommand(
+    "ms-copilot-extension.addEnvironmentWithIcon",
+    (...args) =>
+      Correlator.run(handlers.createNewEnvironment, [TelemetryTriggerFrom.ViewTitleNavigation])
+  );
+  context.subscriptions.push(createNewEnvironmentWithIcon);
+
+  const azureAccountSettingsCmd = vscode.commands.registerCommand(
+    "ms-copilot-extension.azureAccountSettings",
+    () => Correlator.run(handlers.openAzureAccountHandler)
+  );
+  context.subscriptions.push(azureAccountSettingsCmd);
+
+  const createAccountCmd = vscode.commands.registerCommand(
+    "ms-copilot-extension.createAccount",
+    (...args) =>
+      Correlator.run(handlers.createAccountHandler, [TelemetryTriggerFrom.ViewTitleNavigation])
+  );
+  context.subscriptions.push(createAccountCmd);
+
+  const manageCollaborator = vscode.commands.registerCommand(
+    "ms-copilot-extension.manageCollaborator",
+    (node) => {
+      const envName = node.identifier;
+      Correlator.run(handlers.manageCollaboratorHandler, envName);
+    }
+  );
+  context.subscriptions.push(manageCollaborator);
+
+  const localDebug = vscode.commands.registerCommand("ms-copilot-extension.localdebug", (node) => {
+    Correlator.run(handlers.treeViewLocalDebugHandler);
+  });
+  context.subscriptions.push(localDebug);
+
+  const localDebugWithIcon = vscode.commands.registerCommand(
+    "ms-copilot-extension.localdebugWithIcon",
+    (node) => {
+      Correlator.run(handlers.treeViewLocalDebugHandler);
+    }
+  );
+  context.subscriptions.push(localDebugWithIcon);
+
+  const m365AccountSettingsCmd = vscode.commands.registerCommand(
+    "ms-copilot-extension.m365AccountSettings",
+    () => Correlator.run(handlers.openM365AccountHandler)
+  );
+  context.subscriptions.push(m365AccountSettingsCmd);
+
+  const openAccountLinkCmd = vscode.commands.registerCommand(
+    "ms-copilot-extension.openAccountLink",
+    (...args) =>
+      Correlator.run(handlers.openAccountLinkHandler, [TelemetryTriggerFrom.ViewTitleNavigation])
+  );
+  context.subscriptions.push(openAccountLinkCmd);
+
+  const openLifecycleLinkCmd = vscode.commands.registerCommand(
+    "ms-copilot-extension.openLifecycleLink",
+    (...args) =>
+      Correlator.run(handlers.openLifecycleLinkHandler, [TelemetryTriggerFrom.ViewTitleNavigation])
+  );
+  context.subscriptions.push(openLifecycleLinkCmd);
+
+  const openDevelopmentLinkCmd = vscode.commands.registerCommand(
+    "ms-copilot-extension.openDevelopmentLink",
+    (...args) =>
+      Correlator.run(handlers.openDevelopmentLinkHandler, [
+        TelemetryTriggerFrom.ViewTitleNavigation,
+      ])
+  );
+  context.subscriptions.push(openDevelopmentLinkCmd);
+
+  const openEnvLinkCmd = vscode.commands.registerCommand(
+    "ms-copilot-extension.openEnvLink",
+    (...args) =>
+      Correlator.run(handlers.openEnvLinkHandler, [TelemetryTriggerFrom.ViewTitleNavigation])
+  );
+  context.subscriptions.push(openEnvLinkCmd);
+
+  const openHelpFeedbackLinkCmd = vscode.commands.registerCommand(
+    "ms-copilot-extension.openHelpFeedbackLink",
+    (...args) =>
+      Correlator.run(handlers.openHelpFeedbackLinkHandler, [
+        TelemetryTriggerFrom.ViewTitleNavigation,
+      ])
+  );
+  context.subscriptions.push(openHelpFeedbackLinkCmd);
+
+  const openDocumentLinkCmd = vscode.commands.registerCommand(
+    "ms-copilot-extension.openDocumentLink",
+    (...args) => Correlator.run(handlers.openDocumentLinkHandler, args)
+  );
+  context.subscriptions.push(openDocumentLinkCmd);
+
+  const aadManifestTemplateCodeLensCmd = vscode.commands.registerCommand(
+    "ms-copilot-extension.openPreviewAadFile",
+    (...args) => Correlator.run(handlers.openPreviewAadFile, args)
+  );
+  context.subscriptions.push(aadManifestTemplateCodeLensCmd);
+
+  const openResourceGroupInPortal = vscode.commands.registerCommand(
+    "ms-copilot-extension.openResourceGroupInPortal",
+    (node) => {
+      const envName = node.identifier;
+      Correlator.run(handlers.openResourceGroupInPortal, envName);
+    }
+  );
+  context.subscriptions.push(openResourceGroupInPortal);
+
+  const openManifestSchemaCmd = vscode.commands.registerCommand(
+    "ms-copilot-extension.openSchema",
+    (...args) => {
+      Correlator.run(handlers.openExternalHandler, args);
+    }
+  );
+  context.subscriptions.push(openManifestSchemaCmd);
+
+  const openSubscriptionInPortal = vscode.commands.registerCommand(
+    "ms-copilot-extension.openSubscriptionInPortal",
+    (node) => {
+      const envName = node.identifier;
+      Correlator.run(handlers.openSubscriptionInPortal, envName);
+    }
+  );
+  context.subscriptions.push(openSubscriptionInPortal);
+
+  const previewWithIcon = vscode.commands.registerCommand(
+    "ms-copilot-extension.previewWithIcon",
+    async (node) => {
+      await Correlator.run(handlers.treeViewPreviewHandler, node.identifier);
+    }
+  );
+  context.subscriptions.push(previewWithIcon);
+
+  const refreshEnvironment = vscode.commands.registerCommand(
+    "ms-copilot-extension.refreshEnvironment",
+    (...args) =>
+      Correlator.run(handlers.refreshEnvironment, [TelemetryTriggerFrom.ViewTitleNavigation])
+  );
+  context.subscriptions.push(refreshEnvironment);
+
+  const refreshSideloading = vscode.commands.registerCommand(
+    "ms-copilot-extension.refreshSideloading",
+    (...args) => Correlator.run(handlers.refreshSideloadingCallback, args)
+  );
+  context.subscriptions.push(refreshSideloading);
+
+  // Register local debug run icon
+  const runIconCmd = vscode.commands.registerCommand(
+    "ms-copilot-extension.selectAndDebug",
+    (...args) => Correlator.run(handlers.selectAndDebugHandler, args)
+  );
+  context.subscriptions.push(runIconCmd);
+}
+
+async function initializeContextKey(context: vscode.ExtensionContext, isTeamsFxProject: boolean) {
+  await vscode.commands.executeCommand("setContext", "ms-copilot-extension.isSPFx", isSPFxProject);
+
+  await vscode.commands.executeCommand(
+    "setContext",
+    "ms-copilot-extension.isM365",
+    workspaceUri && (await isM365Project(workspaceUri.fsPath))
+  );
+
+  if (isTeamsFxProject) {
+    const aadTemplateWatcher = vscode.workspace.createFileSystemWatcher("**/aad.template.json");
+
+    aadTemplateWatcher.onDidCreate(async (event) => {
+      await setAadManifestEnabledContext();
+    });
+  }
+
+  const ymlFileWatcher = vscode.workspace.createFileSystemWatcher(
+    "**/teamsapp.yml",
+    false,
+    true,
+    true
+  );
+  ymlFileWatcher.onDidCreate(async (event) => {
+    await detectedTeamsFxProject(context);
+  });
+
+  await setAadManifestEnabledContext();
+  await setTDPIntegrationEnabledContext();
+
+  const upgradeable = await checkProjectUpgradable();
+  if (upgradeable) {
+    await vscode.commands.executeCommand("setContext", "ms-copilot-extension.canUpgradeV3", true);
+    await handlers.checkUpgrade([TelemetryTriggerFrom.Auto]);
+  }
+}
+
+async function setAadManifestEnabledContext() {
+  vscode.commands.executeCommand("setContext", "ms-copilot-extension.isAadManifestEnabled", true);
+}
+
+async function setTDPIntegrationEnabledContext() {
+  await vscode.commands.executeCommand(
+    "setContext",
+    "ms-copilot-extension.isTDPIntegrationEnabled", // Currently it will return whether v3 is enabled or not.
+    true
+  );
+}
+
+function registerCodelensAndHoverProviders(context: vscode.ExtensionContext) {
+  // Setup CodeLens provider for userdata file
+  const codelensProvider = new CryptoCodeLensProvider();
+  const envDataSelector = {
+    scheme: "file",
+    pattern: "**/.env.*",
+  };
+
+  const adaptiveCardCodeLensProvider = new AdaptiveCardCodeLensProvider();
+  const adaptiveCardFilePattern = `**/${AdaptiveCardsFolderName}/*.json`;
+  const adaptiveCardFileSelector = {
+    language: "json",
+    scheme: "file",
+    pattern: adaptiveCardFilePattern,
+  };
+
+  const projectSettingsCodeLensProvider = new ProjectSettingsCodeLensProvider();
+  const projectSettingsSelector = {
+    language: "json",
+    scheme: "file",
+    pattern: `**/.${ConfigFolderName}/configs/projectSettings.json`,
+  };
+
+  const manifestTemplateCodeLensProvider = new ManifestTemplateCodeLensProvider();
+  const manifestTemplateSelector = {
+    language: "json",
+    scheme: "file",
+    pattern: `**/${AppPackageFolderName}/manifest.json`,
+  };
+  const localManifestTemplateSelector = {
+    language: "json",
+    scheme: "file",
+    pattern: `**/${AppPackageFolderName}/manifest.local.json`,
+  };
+
+  const manifestPreviewSelector = {
+    language: "json",
+    scheme: "file",
+    pattern: `**/${BuildFolderName}/${AppPackageFolderName}/manifest.*.json`,
+  };
+
+  const aadAppTemplateCodeLensProvider = new AadAppTemplateCodeLensProvider();
+
+  const aadAppTemplateSelectorV3 = {
+    language: "json",
+    scheme: "file",
+    pattern: `**/aad.manifest.json`,
+  };
+
+  const permissionsJsonFileCodeLensProvider = new PermissionsJsonFileCodeLensProvider();
+  const permissionsJsonFileSelector = {
+    language: "json",
+    scheme: "file",
+    pattern: `**/permissions.json`,
+  };
+
+  context.subscriptions.push(
+    vscode.languages.registerCodeLensProvider(envDataSelector, codelensProvider)
+  );
+  context.subscriptions.push(
+    vscode.languages.registerCodeLensProvider(
+      adaptiveCardFileSelector,
+      adaptiveCardCodeLensProvider
+    )
+  );
+  context.subscriptions.push(
+    vscode.languages.registerCodeLensProvider(
+      projectSettingsSelector,
+      projectSettingsCodeLensProvider
+    )
+  );
+  context.subscriptions.push(
+    vscode.languages.registerCodeLensProvider(
+      manifestTemplateSelector,
+      manifestTemplateCodeLensProvider
+    )
+  );
+  context.subscriptions.push(
+    vscode.languages.registerCodeLensProvider(
+      localManifestTemplateSelector,
+      manifestTemplateCodeLensProvider
+    )
+  );
+  context.subscriptions.push(
+    vscode.languages.registerCodeLensProvider(
+      manifestPreviewSelector,
+      manifestTemplateCodeLensProvider
+    )
+  );
+  context.subscriptions.push(
+    vscode.languages.registerCodeLensProvider(
+      permissionsJsonFileSelector,
+      permissionsJsonFileCodeLensProvider
+    )
+  );
+
+  const aadManifestPreviewSelectorV3 = {
+    language: "json",
+    scheme: "file",
+    pattern: `**/${BuildFolderName}/aad.*.json`,
+  };
+
+  const manifestTemplateHoverProvider = new ManifestTemplateHoverProvider();
+  context.subscriptions.push(
+    vscode.languages.registerHoverProvider(manifestTemplateSelector, manifestTemplateHoverProvider)
+  );
+
+  context.subscriptions.push(
+    vscode.languages.registerCodeLensProvider(
+      aadAppTemplateSelectorV3,
+      aadAppTemplateCodeLensProvider
+    )
+  );
+
+  context.subscriptions.push(
+    vscode.languages.registerHoverProvider(
+      localManifestTemplateSelector,
+      manifestTemplateHoverProvider
+    )
+  );
+
+  context.subscriptions.push(
+    vscode.languages.registerHoverProvider(aadAppTemplateSelectorV3, manifestTemplateHoverProvider)
+  );
+
+  context.subscriptions.push(
+    vscode.languages.registerCodeLensProvider(
+      aadManifestPreviewSelectorV3,
+      aadAppTemplateCodeLensProvider
+    )
+  );
+}
+
+function registerDebugConfigProviders(context: vscode.ExtensionContext) {
+  const debugProvider: TeamsfxDebugProvider = new TeamsfxDebugProvider();
+  context.subscriptions.push(
+    vscode.debug.registerDebugConfigurationProvider("pwa-chrome", debugProvider)
+  );
+  context.subscriptions.push(
+    vscode.debug.registerDebugConfigurationProvider("chrome", debugProvider)
+  );
+  context.subscriptions.push(
+    vscode.debug.registerDebugConfigurationProvider("pwa-msedge", debugProvider)
+  );
+  context.subscriptions.push(
+    vscode.debug.registerDebugConfigurationProvider("msedge", debugProvider)
+  );
+}
+
+/**
+ * Tasks that doesn't block the user interaction so that they can be processed in background.
+ */
+async function runBackgroundAsyncTasks(
+  context: vscode.ExtensionContext,
+  isTeamsFxProject: boolean
+) {
+  await exp.initialize(context);
+  await vscode.commands.executeCommand(
+    "setContext",
+    "ms-copilot-extension.isNewUser",
+    isExistingUser === "no"
+  );
+  TreatmentVariableValue.inProductDoc = (await exp
+    .getExpService()
+    .getTreatmentVariableAsync(
+      TreatmentVariables.VSCodeConfig,
+      TreatmentVariables.InProductDoc,
+      true
+    )) as boolean | undefined;
+
+  ExtTelemetry.settingsVersion = await handlers.getSettingsVersion();
+
+  await ExtTelemetry.sendCachedTelemetryEventsAsync();
+  await handlers.postUpgrade();
+  const upgrade = new ExtensionUpgrade(context);
+  upgrade.showChangeLog();
+
+  await openWelcomePageAfterExtensionInstallation();
+
+  if (isTeamsFxProject) {
+    await runTeamsFxBackgroundTasks();
+  }
+
+  const survey = ExtensionSurvey.getInstance();
+  survey.activate();
+}
+
+async function runTeamsFxBackgroundTasks() {
+  const upgradeable = await checkProjectUpgradable();
+  if (isTeamsFxProject) {
+    await handlers.autoOpenProjectHandler();
+    await TreeViewManagerInstance.updateTreeViewsByContent(upgradeable);
+  }
+}
+
+function registerInCommandController(
+  context: vscode.ExtensionContext,
+  name: string,
+  callback: (args?: unknown[]) => Promise<Result<unknown, FxError>>,
+  runningLabelKey?: string
+) {
+  commandController.registerCommand(name, callback, runningLabelKey);
+  const command = vscode.commands.registerCommand(name, (...args) =>
+    Correlator.run(runCommand, name, args)
+  );
+  context.subscriptions.push(command);
+}
+
+function runCommand(commandName: string, args: unknown[]) {
+  commandController.runCommand(commandName, args);
+}
+
+async function checkProjectUpgradable(): Promise<boolean> {
+  const versionCheckResult = await handlers.projectVersionCheck();
+  if (versionCheckResult.isErr()) {
+    unsetIsTeamsFxProject();
+    return false;
+  }
+  const upgradeable = versionCheckResult.isOk()
+    ? versionCheckResult.value.isSupport == VersionState.upgradeable
+    : false;
+  return upgradeable;
+}
+
+async function detectedTeamsFxProject(context: vscode.ExtensionContext) {
+  const wasTeamsFxProject = isTeamsFxProject;
+  await initializeGlobalVariables(context);
+  if (isTeamsFxProject && !wasTeamsFxProject) {
+    activateTeamsFxRegistration(context);
+
+    vscode.commands.executeCommand(
+      "setContext",
+      "ms-copilot-extension.isTeamsFx",
+      isTeamsFxProject
+    );
+
+    const aadTemplateWatcher = vscode.workspace.createFileSystemWatcher("**/aad.template.json");
+
+    aadTemplateWatcher.onDidCreate(async (event) => {
+      await setAadManifestEnabledContext();
+    });
+
+    runTeamsFxBackgroundTasks();
+  }
+
+  const upgradeable = await checkProjectUpgradable();
+  if (isTeamsFxProject) {
+    await vscode.commands.executeCommand(
+      "setContext",
+      "ms-copilot-extension.canUpgradeV3",
+      upgradeable
+    );
+    await TreeViewManagerInstance.updateTreeViewsByContent(upgradeable);
+  }
+}
