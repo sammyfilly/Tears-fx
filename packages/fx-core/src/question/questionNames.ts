@@ -12,13 +12,13 @@ export enum QuestionNames {
   SPFxInstallPackage = "spfx-install-latest-package",
   SPFxFramework = "spfx-framework-type",
   SPFxWebpartName = "spfx-webpart-name",
+  SPFxWebpartDesc = "spfx-webpart-desp",
   SPFxFolder = "spfx-folder",
   OfficeAddinFolder = "addin-project-folder",
   OfficeAddinManifest = "addin-project-manifest",
   OfficeAddinTemplate = "addin-template-select",
   OfficeAddinHost = "addin-host",
   OfficeAddinImport = "addin-import",
-  SkipAppName = "skip-app-name",
   Samples = "samples",
   ReplaceContentUrl = "replaceContentUrl",
   ReplaceWebsiteUrl = "replaceWebsiteUrl",
@@ -27,8 +27,13 @@ export enum QuestionNames {
   RepalceTabUrl = "tdp-tab-url",
   ValidateMethod = "validate-method",
   AppPackagePath = "appPackagePath",
+  CopilotPluginExistingApi = "copilot-plugin-existing-api", // group name for creating a Copilot plugin from existing api
+  ApiSpecLocation = "api-spec-location",
+  OpenAIPluginManifestLocation = "openai-plugin-manifest-location",
+  ApiOperation = "api-operation",
 
   Features = "features",
+  Env = "env",
   SourceEnvName = "sourceEnvName",
   TargetEnvName = "targetEnvName",
   TargetResourceGroupName = "targetResourceGroupName",
@@ -42,7 +47,14 @@ export enum QuestionNames {
   TeamsAppPackageFilePath = "app-package-file-path",
   ConfirmManifest = "confirmManifest",
   ConfirmLocalManifest = "confirmLocalManifest",
+  ConfirmAadManifest = "confirmAadManifest",
   OutputZipPathParamName = "output-zip-path",
   OutputManifestParamName = "output-manifest-path",
   M365Host = "m365-host",
+
+  ManifestPath = "manifest-path",
+
+  UserEmail = "email",
+
+  collaborationAppType = "collaborationType",
 }
