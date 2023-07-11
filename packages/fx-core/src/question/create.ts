@@ -1368,6 +1368,9 @@ export function createProjectQuestionNode(): IQTreeNode {
                       type: "singleFile",
                       name: QuestionNames.OfficeAddinManifest,
                       title: "Select import project manifest file",
+                      default: async (inputs: Inputs) => {
+                        return path.join(inputs[QuestionNames.OfficeAddinFolder], "manifest.xml");
+                      },
                     },
                   },
                 ],
