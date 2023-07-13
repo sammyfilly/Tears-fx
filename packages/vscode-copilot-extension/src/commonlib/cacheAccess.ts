@@ -20,7 +20,7 @@ const accountPath = os.homedir + `/.${ConfigFolderName}/account/homeId.cache.`;
 const cachePathEnd = ".json";
 
 // the friendly service name to store secret in keytar
-const serviceName = "Microsoft Teams Toolkit";
+const serviceName = "Microsoft Copilot Extension";
 
 export const UTF8 = "utf8";
 

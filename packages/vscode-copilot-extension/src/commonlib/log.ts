@@ -8,7 +8,7 @@ import * as vscode from "vscode";
 import * as fs from "fs-extra";
 import { defaultExtensionLogPath } from "../globalVariables";
 
-const outputChannelDisplayName = "Teams Toolkit";
+const outputChannelDisplayName = "Microsoft Copilot Extension";
 
 export class VsCodeLogProvider implements LogProvider {
   outputChannel: vscode.OutputChannel;
