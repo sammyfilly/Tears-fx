@@ -12,6 +12,7 @@ const defaultScope = "https://graph.microsoft.com/.default";
 
 /**
  * Microsoft Graph auth provider for Teams Framework
+ * @deprecated Use `TokenCredentialAuthenticationProvider` from `@microsoft/microsoft-graph-client/authProviders/azureTokenCredentials` instead.
  */
 export class MsGraphAuthProvider implements AuthenticationProvider {
   private credentialOrTeamsFx: TokenCredential | TeamsFxConfiguration;
