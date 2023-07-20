@@ -58,7 +58,7 @@ describe("Collaboration", function () {
 
       // Check Permission
       const checkPermissionResult = await execAsyncWithRetry(
-        `teamsfx permission status --env dev --interactive false --teams-app-manifest ${projectPath}/appPackage/manifest.json --aad-app-manifest ${projectPath}/aad.manifest.json`,
+        `teamsfx permission status --list-all-collaborators --env dev --interactive false --teams-app-manifest ${projectPath}/appPackage/manifest.json --aad-app-manifest ${projectPath}/aad.manifest.json`,
         {
           cwd: projectPath,
           env: process.env,
@@ -68,10 +68,10 @@ describe("Collaboration", function () {
       console.log(`check permission: ${checkPermissionResult.stdout}`);
 
       expect(checkPermissionResult.stdout).to.contains(
-        "Resource Name: Azure AD App, Permission: Owner"
+        `Account used to check: ${creator?.split("@")[0]}`
       );
       expect(checkPermissionResult.stdout).to.contains(
-        "Resource Name: Teams App, Permission: Administrator"
+        `Teams App Owner: ${collaborator?.split("@")[0]}`
       );
       console.log("[Successfully] check permission");
 
