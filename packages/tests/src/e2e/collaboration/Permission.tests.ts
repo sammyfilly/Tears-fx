@@ -20,6 +20,8 @@ import {
 import { it } from "@microsoft/extra-shot-mocha";
 import { CliHelper } from "../../commonlib/cliHelper";
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 describe("Collaboration", function () {
   const testFolder = getTestFolder();
   let appName = getUniqueAppName();
@@ -51,6 +53,7 @@ describe("Collaboration", function () {
 
       // provision
       await CliHelper.provisionProject(projectPath);
+      await sleep(10000);
 
       // Check Permission
       const checkPermissionResult = await execAsyncWithRetry(
@@ -58,7 +61,7 @@ describe("Collaboration", function () {
         {
           cwd: projectPath,
           env: process.env,
-          timeout: 10,
+          timeout: 0,
         }
       );
       console.log(`check permission: ${checkPermissionResult.stdout}`);
