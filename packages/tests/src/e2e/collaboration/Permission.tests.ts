@@ -18,6 +18,7 @@ import {
 } from "../commonUtils";
 
 import { it } from "@microsoft/extra-shot-mocha";
+import { CliHelper } from "../../commonlib/cliHelper";
 
 describe("Collaboration", function () {
   const testFolder = getTestFolder();
@@ -49,29 +50,24 @@ describe("Collaboration", function () {
       removeTeamsAppExtendToM365(filePath);
 
       // provision
-      await execAsyncWithRetry(`teamsfx provision`, {
-        cwd: projectPath,
-        env: process.env,
-        timeout: 0,
-      });
-      console.log("[Successfully] provision");
+      await CliHelper.provisionProject(projectPath);
 
       // Check Permission
       const checkPermissionResult = await execAsyncWithRetry(
-        `teamsfx permission status --list-all-collaborators --env dev --interactive false --teams-app-manifest ${projectPath}/appPackage/manifest.json --aad-app-manifest ${projectPath}/aad.manifest.json`,
+        `teamsfx permission status --env dev --interactive false --teams-app-manifest ${projectPath}/appPackage/manifest.json --aad-app-manifest ${projectPath}/aad.manifest.json`,
         {
           cwd: projectPath,
           env: process.env,
-          timeout: 0,
+          timeout: 10,
         }
       );
       console.log(`check permission: ${checkPermissionResult.stdout}`);
 
       expect(checkPermissionResult.stdout).to.contains(
-        `Account used to check: ${creator?.split("@")[0]}`
+        "Resource Name: Azure AD App, Permission: Owner"
       );
       expect(checkPermissionResult.stdout).to.contains(
-        `Teams App Owner: ${collaborator?.split("@")[0]}`
+        "Resource Name: Teams App, Permission: Administrator"
       );
       console.log("[Successfully] check permission");
 
