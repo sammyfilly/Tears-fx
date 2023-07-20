@@ -65,6 +65,7 @@ describe("Collaboration", function () {
           timeout: 0,
         }
       );
+      console.log(`check permission: ${checkPermissionResult.stdout}`);
 
       expect(checkPermissionResult.stdout).to.contains(
         "Resource Name: Azure AD App, Permission: Owner"
