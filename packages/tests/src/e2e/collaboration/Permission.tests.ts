@@ -55,25 +55,6 @@ describe("Collaboration", function () {
       await CliHelper.provisionProject(projectPath);
       await sleep(10000);
 
-      // Check Permission
-      const checkPermissionResult = await execAsyncWithRetry(
-        `teamsfx permission status --env dev --interactive false --teams-app-manifest ${projectPath}/appPackage/manifest.json --aad-app-manifest ${projectPath}/aad.manifest.json`,
-        {
-          cwd: projectPath,
-          env: process.env,
-          timeout: 0,
-        }
-      );
-      console.log(`check permission: ${checkPermissionResult.stdout}`);
-
-      expect(checkPermissionResult.stdout).to.contains(
-        "Resource Name: Azure AD App, Permission: Owner"
-      );
-      expect(checkPermissionResult.stdout).to.contains(
-        "Resource Name: Teams App, Permission: Administrator"
-      );
-      console.log("[Successfully] check permission");
-
       // Grant Permission
       const grantCollaboratorResult = await execAsyncWithRetry(
         `teamsfx permission grant --email ${collaborator} --env dev --teams-app-manifest ${projectPath}/appPackage/manifest.json --aad-app-manifest ${projectPath}/aad.manifest.json --interactive false`,
@@ -91,6 +72,25 @@ describe("Collaboration", function () {
         "Administrator permission has been granted to Teams App"
       );
       console.log("[Successfully] grant permission");
+
+      // Check Permission
+      const checkPermissionResult = await execAsyncWithRetry(
+        `teamsfx permission status --env dev --interactive false --teams-app-manifest ./appPackage/manifest.json --aad-app-manifest ./aad.manifest.json`,
+        {
+          cwd: projectPath,
+          env: process.env,
+          timeout: 0,
+        }
+      );
+      console.log(`check permission: ${checkPermissionResult.stdout}`);
+
+      expect(checkPermissionResult.stdout).to.contains(
+        "Resource Name: Azure AD App, Permission: Owner"
+      );
+      expect(checkPermissionResult.stdout).to.contains(
+        "Resource Name: Teams App, Permission: Administrator"
+      );
+      console.log("[Successfully] check permission");
 
       const listCollaboratorResult = await execAsync(
         `teamsfx permission status --list-all-collaborators --env dev --teams-app-manifest ${projectPath}/appPackage/manifest.json --aad-app-manifest ${projectPath}/aad.manifest.json --interactive false`,
