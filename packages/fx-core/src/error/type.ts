@@ -32,7 +32,8 @@ export type ExternalErrorCategory2 =
   | "Authentication"
   | "ResourceNotFound"
   | "ResourceConflict"
-  | "PermissionDenied";
+  | "PermissionDenied"
+  | "ServiceError";
 
 export interface TTKInternalErrorOptions extends TTKErrorOptions {
   category1: "internal";
@@ -82,15 +83,3 @@ export class TTKError extends Error {
     Object.setPrototypeOf(this, new.target.prototype);
   }
 }
-
-const error = new TTKError({
-  type: "user",
-  stage: "create",
-  source: "core",
-  category1: "unhandled",
-  innerError: new Error("inner error"),
-});
-
-console.log(error);
-console.log(error.name);
-console.log(error instanceof TTKError);
