@@ -1,21 +1,88 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+import { FxCore } from "../core/FxCore";
+
+export type Jsonable =
+  | string
+  | number
+  | boolean
+  | null
+  | undefined
+  | readonly Jsonable[]
+  | { readonly [key: string]: Jsonable }
+  | { toJSON(): Jsonable };
+
+export type ErrorStage =
+  | Exclude<
+      keyof FxCore,
+      "getQuestion" | "on" | "tools" | "isFromSample" | "v3Implement" | "settingsVersion"
+    >
+  | "";
+
+export type ErrorSource =
+  | "vsc"
+  | "cli"
+  | "c_fxcore"
+  | "c_coordinator"
+  | "c_configManager"
+  | "c_envManager"
+  | "c_resourceGroupHelper"
+  | "c_settingsUtils"
+  | "c_middleware"
+  | "c_collaborator"
+  | "c_question"
+  | "c_ui"
+  | "g_generator"
+  | "g_copilotGenerator"
+  | "g_spfxGenerator"
+  | "g_officeAddinGenerator"
+  | "a_teamsApp_create"
+  | "a_teamsApp_validate"
+  | "a_teamsApp_validateAppPackage"
+  | "a_teamsApp_configure"
+  | "a_teamsApp_copyAppPackageToSPFx"
+  | "a_teamsApp_publishAppPackage"
+  | "a_aad_create"
+  | "a_aad_update"
+  | "a_arm_deploy"
+  | "a_botAadApp_create"
+  | "a_azureAppService_zipDeploy"
+  | "a_azureFunctions_zipDeploy"
+  | "a_azureStorage_deploy"
+  | "a_azureStorage_enableStaticWebsite"
+  | "a_spfx_deploy"
+  | "a_script_dotnetBuild"
+  | "a_script_npmBuild"
+  | "a_script_npxBuild"
+  | "a_script"
+  | "a_devTool_install"
+  | "a_file_createOrUpdateEnvironmentFile"
+  | "a_file_createOrUpdateJsonFile"
+  | "a_botFramework_create"
+  | "a_m365_acquire"
+  | "a_add_addWebPart"
+  | "";
+
+export type ErrorType = "internal" | "external" | "unhandled";
+
+export type EntityType = "user" | "system";
+
 interface TTKErrorOptions {
-  type?: "user" | "system";
-  stage?: string;
-  source?: string;
-  category1: "internal" | "external" | "unhandled";
-  category2?: string;
-  category3?: string;
-  innerError?: any;
+  type: ErrorType;
+  name: InternalErrorName | ExternalErrorName | UnhandledErrorName;
+  entity?: EntityType;
+  stage?: ErrorStage;
+  source?: ErrorSource;
+  category?: string;
+  innerError?: Jsonable;
   helpLink?: string;
-  displayMessage?: string;
-  context?: Record<string, string>;
   message?: string;
+  displayMessage?: string;
+  context?: Jsonable;
 }
 
-export type InternalErrorCategory2 =
+export type InternalErrorName =
   | "FileNotFound"
   | "PermissionDenied"
   | "Execution"
@@ -27,7 +94,7 @@ export type InternalErrorCategory2 =
   | "InvalidFormat"
   | "ValidationFailure";
 
-export type ExternalErrorCategory2 =
+export type ExternalErrorName =
   | "Network"
   | "Authentication"
   | "ResourceNotFound"
@@ -35,51 +102,81 @@ export type ExternalErrorCategory2 =
   | "PermissionDenied"
   | "ServiceError";
 
+export type UnhandledErrorName = "Unhandled";
+
 export interface TTKInternalErrorOptions extends TTKErrorOptions {
-  category1: "internal";
-  category2: InternalErrorCategory2;
+  type: "internal";
+  name: InternalErrorName;
+  message: string;
 }
 
 export interface TTKExternalErrorOptions extends TTKErrorOptions {
-  category1: "external";
-  category2: ExternalErrorCategory2;
+  type: "external";
+  name: ExternalErrorName;
+  message: string;
 }
 
 export interface TTKUnhandledErrorOptions extends TTKErrorOptions {
-  category1: "unhandled";
-  innerError: any;
+  type: "unhandled";
+  name: UnhandledErrorName;
+  innerError: Jsonable;
 }
 
 export class TTKError extends Error {
-  type: "user" | "system";
-  stage: string;
-  source: string;
-  category1: "internal" | "external" | "unhandled";
-  category2?: string;
-  category3?: string;
-  innerError?: any;
+  type: ErrorType;
+  entity: EntityType;
+  stage: ErrorStage;
+  source: ErrorSource;
+  category?: string;
+  innerError?: Jsonable;
   helpLink?: string;
   displayMessage?: string;
-  context?: Record<string, string>;
+  context?: Jsonable;
   constructor(
     option: TTKInternalErrorOptions | TTKExternalErrorOptions | TTKUnhandledErrorOptions
   ) {
-    const message = option.message || option.innerError?.message;
+    const message = option.message || (option.innerError as { message: string })?.message;
     super(message);
-    this.name = new.target.name;
-    this.type = option.type || "system";
+    this.name = option.name;
+    this.type = option.type;
+    this.entity = option.entity || "system";
     this.stage = option.stage || "";
     this.source = option.source || "";
-    this.category1 = option.category1;
-    this.category2 = option.category2;
-    this.category2 = option.category2;
+    this.type = option.type;
+    this.category = option.category;
     this.innerError = option.innerError;
     this.helpLink = option.helpLink;
-    this.displayMessage = option.displayMessage;
+    this.displayMessage = option.displayMessage || this.message;
     this.context = option.context;
-    //stack
     Error.captureStackTrace(this, new.target);
-    //prototype
     Object.setPrototypeOf(this, new.target.prototype);
   }
 }
+
+// option 1
+class UserCancelError extends TTKError {
+  constructor(stage: ErrorStage, source: ErrorSource) {
+    super({
+      type: "internal",
+      name: "UserCancel",
+      message: "User Cancelled",
+      stage,
+      source,
+    });
+  }
+}
+
+const cancelError1 = new UserCancelError("createProject", "c_fxcore");
+
+// option 2
+const cancelError2 = new TTKError({
+  type: "internal",
+  name: "UserCancel",
+  message: "User Cancelled",
+  stage: "createProject",
+  source: "c_fxcore",
+});
+
+console.log(cancelError1);
+
+console.log(cancelError2);
