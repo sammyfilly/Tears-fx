@@ -84,7 +84,7 @@ interface TTKErrorOptions {
 
 export type InternalErrorName =
   | "FileNotFound"
-  | "PermissionDenied"
+  | "Permission"
   | "Execution"
   | "UserCancel"
   | "MissingEnvVars"
@@ -92,15 +92,15 @@ export type InternalErrorName =
   | "Timeout"
   | "IllegalInput"
   | "InvalidFormat"
-  | "ValidationFailure";
+  | "Validation";
 
 export type ExternalErrorName =
   | "Network"
   | "Authentication"
   | "ResourceNotFound"
   | "ResourceConflict"
-  | "PermissionDenied"
-  | "ServiceError";
+  | "Permission"
+  | "RemoteService";
 
 export type UnhandledErrorName = "Unhandled";
 
