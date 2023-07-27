@@ -34,6 +34,8 @@ import { ProgrammingLanguage } from "../../../question";
 import * as fs from "fs-extra";
 import { assembleError } from "../../../error";
 import { isYamlSpecFile } from "../../../common/spec-parser/utils";
+import { envUtil } from "../../utils/envUtil";
+import { isValidHttpUrl } from "../../../question/util";
 
 const componentName = "simplified-message-extension-existing-api";
 const templateName = "simplified-message-extension-existing-api";
@@ -135,6 +137,12 @@ export class CopilotPluginGenerator {
       // check Teams manifest
       const manifestWarnings = validateTeamsManifestLength(teamsManifest);
 
+      // add remote env
+      if (isValidHttpUrl(url)) {
+        await envUtil.writeEnv(destinationPath, "dev", {
+          API_REMOTE_URL: url,
+        });
+      }
       // TODO: format log warnings
       for (const warn of warnings) {
         context.logProvider.warning(warn.content);
