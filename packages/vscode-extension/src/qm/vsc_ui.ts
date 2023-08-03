@@ -54,6 +54,8 @@ import {
   assembleError,
   loadingDefaultPlaceholder,
   loadingOptionsPlaceholder,
+  RetryHandler,
+  SpecParser,
   UserCancelError,
 } from "@microsoft/teamsfx-core";
 import * as packageJson from "../../package.json";
@@ -67,8 +69,9 @@ import {
   TelemetryEvent,
   TelemetryProperty,
 } from "../telemetry/extTelemetryEvents";
-import { sleep } from "../utils/commonUtils";
+import { delay, sleep } from "../utils/commonUtils";
 import { getDefaultString, localize } from "../utils/localizeUtils";
+import axios, { AxiosResponse } from "axios";
 
 export interface FxQuickPickItem extends QuickPickItem {
   id: string;
@@ -476,6 +479,7 @@ export class VsCodeUI implements UserInteraction {
 
   async inputText(config: InputTextConfig): Promise<Result<InputTextResult, FxError>> {
     const disposables: Disposable[] = [];
+
     try {
       const inputBox: InputBox = window.createInputBox();
       inputBox.title = config.title;
@@ -508,18 +512,66 @@ export class VsCodeUI implements UserInteraction {
             ? await config.validation(inputBox.value)
             : undefined;
           if (!validationRes) {
-            inputBox.enabled = false;
-            inputBox.busy = true;
+            //inputBox.enabled = false;
+            //inputBox.busy = true;
             if (config.additionalValidationOnAccept) {
               const oldValue = inputBox.value;
               inputBox.placeholder = localize("teamstoolkit.qm.validatingInput");
               inputBox.value = "";
               try {
-                const additionalValidationOnAcceptRes = await config.additionalValidationOnAccept(
-                  oldValue
-                );
+                await config.additionalValidationOnAccept(oldValue);
+
+                for (let i = 0; i < 10000000000000; i++) {
+                  // Some computation...
+                }
+                console.log("Task completed");
+
+                const promise = new Promise(async (resolve, reject) => {
+                  const specParser = new SpecParser(oldValue);
+                  await specParser.validate();
+                  resolve("");
+                });
+
+                // setImmediate( async () => {
+                // const specParser = new SpecParser(oldValue);
+                // await specParser.validate();
+                // }
+                // );
+                // function longRunningTask() {
+                //   // Simulate a time-consuming operation (e.g., fetching data from a database)
+                //   // Replace this with your actual synchronous task
+                //   for (let i = 0; i < 10000000000000; i++) {
+                //     // Some computation...
+                //   }
+                //    console.log('Task completed');
+                // }
+
+                // // Asynchronous wrapper for the longRunningTask
+                // function asyncLongRunningTask() {
+                //   return new Promise((resolve, reject) => {
+                //     try {
+                //       const result = longRunningTask();
+                //       resolve(result);
+                //     } catch (err) {
+                //       reject(err);
+                //     }
+                //   });
+                // }
+
+                //await asyncLongRunningTask();
+
+                // await delay(200000);
+
+                // await RetryHandler.Retry(async () => { await fetch("https://test.com");});
+
+                // const res: AxiosResponse<any> = await sendRequestWithRetry(async () => {
+                //   return await axios.get("http://www.test.com");
+                // }, 3);
+
+                const additionalValidationOnAcceptRes = "";
 
                 if (!additionalValidationOnAcceptRes) {
+                  inputBox.validationMessage = additionalValidationOnAcceptRes;
                   resolve(ok({ type: "success", result: oldValue }));
                 } else {
                   inputBox.validationMessage = additionalValidationOnAcceptRes;
@@ -565,7 +617,9 @@ export class VsCodeUI implements UserInteraction {
           }),
           inputBox.onDidAccept(onDidAccept),
           inputBox.onDidHide(() => {
+            console.log("hiding...");
             resolve(err(new UserCancelError("VSC")));
+            inputBox.dispose();
           }),
           inputBox.onDidTriggerButton(async (button) => {
             if (button === QuickInputButtons.Back) resolve(ok({ type: "back" }));
@@ -576,6 +630,7 @@ export class VsCodeUI implements UserInteraction {
         );
         disposables.push(inputBox);
         inputBox.show();
+        // inputBox.hide();
       });
     } finally {
       disposables.forEach((d) => {
@@ -1051,4 +1106,33 @@ export class VsCodeUI implements UserInteraction {
       return err(internalUIError);
     }
   }
+}
+
+async function sendRequestWithRetry<T>(
+  requestFn: () => Promise<AxiosResponse<T>>,
+  tryLimits: number
+): Promise<AxiosResponse<T>> {
+  // !status means network error, see https://github.com/axios/axios/issues/383
+  const canTry = (status: number | undefined) => !status || (status >= 500 && status < 600);
+
+  let status: number | undefined;
+  let error: Error;
+
+  for (let i = 0; i < tryLimits && canTry(status); i++) {
+    try {
+      const res = await requestFn();
+      if (res.status === 200 || res.status === 201) {
+        return res;
+      } else {
+        error = new Error(`HTTP Request failed: ${JSON.stringify(res)}`);
+      }
+      status = res.status;
+    } catch (e: any) {
+      error = e;
+      status = e?.response?.status;
+    }
+  }
+
+  error ??= new Error(`RequestWithRetry got bad tryLimits: ${tryLimits}`);
+  throw error;
 }
