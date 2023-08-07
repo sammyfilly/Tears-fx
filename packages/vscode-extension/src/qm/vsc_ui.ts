@@ -72,6 +72,7 @@ import {
 import { delay, sleep } from "../utils/commonUtils";
 import { getDefaultString, localize } from "../utils/localizeUtils";
 import axios, { AxiosResponse } from "axios";
+import { fork } from "child_process";
 
 export interface FxQuickPickItem extends QuickPickItem {
   id: string;
@@ -507,30 +508,84 @@ export class VsCodeUI implements UserInteraction {
           inputBox.value = defaultValue || "";
         };
 
+        // const validateOnAccept = async (input: string) => {
+        //   try {
+        //     defaultValue = await config.additionalValidationOnAccept!(input);
+        //   } catch (e) {
+        //     resolve(err(assembleError(e)));
+        //   }
+        // };
         const onDidAccept = async () => {
           const validationRes = config.validation
             ? await config.validation(inputBox.value)
             : undefined;
           if (!validationRes) {
-            //inputBox.enabled = false;
-            //inputBox.busy = true;
+            inputBox.enabled = false;
+            inputBox.busy = true;
             if (config.additionalValidationOnAccept) {
               const oldValue = inputBox.value;
               inputBox.placeholder = localize("teamstoolkit.qm.validatingInput");
               inputBox.value = "";
               try {
-                await config.additionalValidationOnAccept(oldValue);
+                const child = fork(
+                  "C:\\Users\\yuqzho\\projects\\TeamsFx\\packages\\vscode-extension\\src\\qm\\child.js"
+                );
 
-                for (let i = 0; i < 10000000000000; i++) {
-                  // Some computation...
-                }
-                console.log("Task completed");
-
-                const promise = new Promise(async (resolve, reject) => {
-                  const specParser = new SpecParser(oldValue);
-                  await specParser.validate();
-                  resolve("");
+                child.on("message", async (result) => {
+                  console.log(`Task finished with result: ${result}`);
+                  inputBox.busy = false;
+                  inputBox.enabled = true;
+                  const specParser = new SpecParser(
+                    "https://raw.githubusercontent.com/OAI/OpenAPI-Specification/main/examples/v3.0/petstore.yaml"
+                  );
+                  const tt = await specParser.validate();
+                  console.log(tt);
+                  resolve(
+                    ok({
+                      type: "success",
+                      result:
+                        "https://raw.githubusercontent.com/OAI/OpenAPI-Specification/main/examples/v3.0/petstore.yaml",
+                    })
+                  );
                 });
+
+                console.log(inputBox.value);
+                child.send(oldValue);
+
+                // const p = config.additionalValidationOnAccept(oldValue) as Promise<string>;
+
+                // p.then((additionalValidationOnAcceptRes) => {
+
+                //      if (!additionalValidationOnAcceptRes) {
+                //         inputBox.validationMessage = additionalValidationOnAcceptRes;
+                //         resolve(ok({ type: "success", result: oldValue }));
+                //   } else {
+                //         inputBox.validationMessage = additionalValidationOnAcceptRes;
+                //     inputBox.busy = false;
+                //         inputBox.enabled = true;
+                //         inputBox.value = oldValue;
+
+                //         return;
+                //   }
+                // });
+
+                //   const task = new Promise(async (resolve, reject) => {
+                //   for (let i = 0; i < 10000000000000; i++) {
+                //     // Some computation...
+                //       if (i % 1000 === 0) {
+                //       console.log(i);
+                //     }
+                //     }
+                //     resolve("test");
+                // });
+
+                //   console.log("Task completed");
+
+                //   const promise = new Promise(async (resolve, reject) => {
+                //     const specParser = new SpecParser(oldValue);
+                //     await specParser.validate();
+                //     resolve("");
+                //   });
 
                 // setImmediate( async () => {
                 // const specParser = new SpecParser(oldValue);
@@ -567,26 +622,12 @@ export class VsCodeUI implements UserInteraction {
                 // const res: AxiosResponse<any> = await sendRequestWithRetry(async () => {
                 //   return await axios.get("http://www.test.com");
                 // }, 3);
-
-                const additionalValidationOnAcceptRes = "";
-
-                if (!additionalValidationOnAcceptRes) {
-                  inputBox.validationMessage = additionalValidationOnAcceptRes;
-                  resolve(ok({ type: "success", result: oldValue }));
-                } else {
-                  inputBox.validationMessage = additionalValidationOnAcceptRes;
-                  inputBox.busy = false;
-                  inputBox.enabled = true;
-                  inputBox.value = oldValue;
-                  return;
-                }
               } catch (e) {
                 resolve(err(assembleError(e)));
               }
             } else {
               resolve(ok({ type: "success", result: inputBox.value }));
             }
-            resolve(ok({ type: "success", result: inputBox.value }));
           } else {
             inputBox.validationMessage = validationRes;
           }

@@ -10,7 +10,7 @@ export * from "./common/globalState";
 export { jsonUtils } from "./common/jsonUtils";
 export * from "./common/local";
 export * from "./common/m365/constants";
-export * from "./common/spec-parser";
+export * from "./common/spec-parser/specParser";
 export { PackageService } from "./common/m365/packageService";
 export * from "./common/m365/serviceConstant";
 export * from "./common/permissionInterface";

@@ -3003,8 +3003,15 @@ export async function scaffoldFromDeveloperPortalHandler(
         tokenRes.error,
         properties
       );
+
       await progressBar.end(false);
       return err(tokenRes.error);
+    }
+    for (let i = 0; i < 10000000000000; i++) {
+      // Some computation...
+      if (i % 1000 === 0) {
+        console.log(i);
+      }
     }
     token = tokenRes.value;
 
