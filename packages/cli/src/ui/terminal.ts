@@ -2,6 +2,9 @@
 // Licensed under the MIT license.
 
 import readline from "readline";
+import { IProgressHandler } from "@microsoft/teamsfx-api";
+import figures from "figures";
+import { TextType, colorize } from "../colorize";
 
 export type ContentCB = () => string;
 
@@ -39,7 +42,7 @@ export class Row {
   freeze() {
     if (!this._freezed) {
       this._freezed = true;
-      ScreenManager.getInstance().freeze(this);
+      terminal.freeze(this);
     }
   }
 }
@@ -209,7 +212,7 @@ class Terminal {
    * Moves the cursor down (dy), also the first char of the row.
    * @param dy
    */
-  private moveCursorDown(dy: number) {
+  moveCursorDown(dy: number) {
     if (!this.isTTY("out")) {
       return;
     }
@@ -224,7 +227,7 @@ class Terminal {
   /**
    * Clears the no-freezed rows in the out stream.
    */
-  private clearScreen() {
+  clearScreen() {
     if (!this.isTTY("out")) {
       this.cursorY = 0;
       return;
@@ -278,3 +281,117 @@ class Terminal {
     return this.streams[type].isTTY;
   }
 }
+
+export const terminal = new Terminal();
+
+class Progress implements IProgressHandler {
+  readonly barSize = 20;
+  private readonly title: string;
+  private totalSteps: number;
+  private currentStep: number;
+  private currentPercentage: number;
+  private detail?: string;
+  private status?: "done" | "error" | "running";
+
+  constructor(title: string, totalSteps: number) {
+    this.totalSteps = totalSteps;
+    this.title = title;
+    this.currentStep = 0;
+    this.currentPercentage = 0;
+  }
+
+  async start(detail?: string) {
+    this.status = "running";
+    this.detail = detail;
+    this.currentStep = 0;
+  }
+
+  async end(success: boolean) {
+    this.status = success ? "done" : "error";
+    if (success) this.currentPercentage = 100;
+  }
+
+  async next(detail?: string) {
+    this.detail = detail;
+    this.currentStep++;
+    if (this.totalSteps < this.currentStep) this.totalSteps = this.currentStep;
+  }
+
+  updatePercentage() {
+    // const needArrivedPercentage = ((this.currentStep - 1) / this.totalSteps) * 100;
+    // const nextArrivedPercentage = (this.currentStep / this.totalSteps) * 100 - 1;
+    // if (this.currentPercentage < needArrivedPercentage) {
+    //   const diff = needArrivedPercentage - this.currentPercentage;
+    //   this.currentPercentage += diff / terminal.fps >= 5 ? diff / terminal.fps : 5;
+    // } else if (this.currentPercentage < nextArrivedPercentage) {
+    //   const diff = nextArrivedPercentage - this.currentPercentage;
+    //   this.currentPercentage += diff / terminal.fps / 20;
+    // }
+    this.currentPercentage = (this.currentStep / this.totalSteps) * 100;
+    this.currentPercentage = Math.min(this.currentPercentage, 100);
+  }
+
+  wholeMessage(): string {
+    this.updatePercentage();
+    const message =
+      this.status === "done"
+        ? this.doneMessage
+        : this.status === "error"
+        ? this.errorMessage
+        : this.message;
+    return colorize(
+      `${this.barStatus}  ${Math.round(this.currentPercentage)}% ${this.runningChar} ${message}`,
+      TextType.Info
+    );
+  }
+
+  get barStatus(): string {
+    const completeSize = Math.round((this.currentPercentage / 100) * this.barSize);
+    return "█".repeat(completeSize) + "▒".repeat(this.barSize - completeSize);
+  }
+
+  get runningChar() {
+    const chars = ["|", "/", "-", "\\"];
+    return chars[this.status === "running" ? Math.floor(Date.now() / 1000) % 4 : 0];
+  }
+
+  get doneMessage(): string {
+    return (
+      colorize(`[${this.totalSteps}/${this.totalSteps}] ${this.title} `, TextType.Info) +
+      colorize(` (${figures.tick}) Done.`, TextType.Success)
+    );
+  }
+
+  get errorMessage(): string {
+    return (
+      colorize(
+        `[${this.currentStep}/${this.totalSteps}] ${this.title}: ${this.detail || "starting."}`,
+        TextType.Info
+      ) + colorize(` (${figures.cross}) Failed.`, TextType.Error)
+    );
+  }
+
+  get message(): string {
+    return colorize(
+      `[${this.currentStep}/${this.totalSteps}] ${this.title}: ${this.detail || "starting."}`,
+      TextType.Info
+    );
+  }
+}
+function sleep(seconds: number) {
+  const milliseconds = seconds * 1000; // Convert seconds to milliseconds
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+(async () => {
+  const progress = new Progress("test", 10);
+  for (let i = 0; i < 10; ++i) {
+    progress.next(`test ${i}`);
+    // progress.updatePercentage();
+    terminal.write(progress.wholeMessage());
+    await sleep(1);
+    terminal.clearScreen();
+  }
+  progress.end(true);
+  terminal.write(progress.wholeMessage());
+})();
