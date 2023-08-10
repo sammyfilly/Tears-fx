@@ -2,8 +2,10 @@
 // Licensed under the MIT license.
 
 import {
+  ApiOperation,
   AppPackageFolderName,
   BuildFolderName,
+  CreateProjectResult,
   Func,
   FxError,
   Inputs,
@@ -73,12 +75,12 @@ export default class ServerConnection implements IServerConnection {
       this.customizeValidateFuncRequest.bind(this),
       this.customizeOnSelectionChangeFuncRequest.bind(this),
       this.addSsoRequest.bind(this),
-      this.getProjectComponents.bind(this),
       this.getProjectMigrationStatusRequest.bind(this),
       this.migrateProjectRequest.bind(this),
       this.publishInDeveloperPortalRequest.bind(this),
       this.setRegionRequest.bind(this),
       this.listDevTunnelsRequest.bind(this),
+      this.copilotPluginAddAPIRequest.bind(this),
       this.loadOpenAIPluginManifestRequest.bind(this),
       this.listOpenAPISpecOperationsRequest.bind(this),
     ].forEach((fn) => {
@@ -108,7 +110,7 @@ export default class ServerConnection implements IServerConnection {
   public async createProjectRequest(
     inputs: Inputs,
     token: CancellationToken
-  ): Promise<Result<string, FxError>> {
+  ): Promise<Result<CreateProjectResult, FxError>> {
     const corrId = inputs.correlationId ? inputs.correlationId : "";
     const res = await Correlator.runWithId(
       corrId,
@@ -121,7 +123,7 @@ export default class ServerConnection implements IServerConnection {
   public async localDebugRequest(
     inputs: Inputs,
     token: CancellationToken
-  ): Promise<Result<Void, FxError>> {
+  ): Promise<Result<undefined, FxError>> {
     const corrId = inputs.correlationId ? inputs.correlationId : "";
     const res = await Correlator.runWithId(
       corrId,
@@ -157,7 +159,7 @@ export default class ServerConnection implements IServerConnection {
   public async preCheckYmlAndEnvForVSRequest(
     inputs: Inputs,
     token: CancellationToken
-  ): Promise<Result<Void, FxError>> {
+  ): Promise<Result<undefined, FxError>> {
     const corrId = inputs.correlationId ? inputs.correlationId : "";
     const res = await Correlator.runWithId(
       corrId,
@@ -170,7 +172,7 @@ export default class ServerConnection implements IServerConnection {
   public async validateManifestForVSRequest(
     inputs: Inputs,
     token: CancellationToken
-  ): Promise<Result<Void, FxError>> {
+  ): Promise<Result<undefined, FxError>> {
     const corrId = inputs.correlationId ? inputs.correlationId : "";
     const res = await Correlator.runWithId(
       corrId,
@@ -183,7 +185,7 @@ export default class ServerConnection implements IServerConnection {
   public async provisionResourcesRequest(
     inputs: Inputs,
     token: CancellationToken
-  ): Promise<Result<Void, FxError>> {
+  ): Promise<Result<undefined, FxError>> {
     const corrId = inputs.correlationId ? inputs.correlationId : "";
     const res = await Correlator.runWithId(
       corrId,
@@ -196,7 +198,7 @@ export default class ServerConnection implements IServerConnection {
   public async deployArtifactsRequest(
     inputs: Inputs,
     token: CancellationToken
-  ): Promise<Result<Void, FxError>> {
+  ): Promise<Result<undefined, FxError>> {
     const corrId = inputs.correlationId ? inputs.correlationId : "";
     const res = await Correlator.runWithId(
       corrId,
@@ -238,7 +240,7 @@ export default class ServerConnection implements IServerConnection {
   public async publishApplicationRequest(
     inputs: Inputs,
     token: CancellationToken
-  ): Promise<Result<Void, FxError>> {
+  ): Promise<Result<undefined, FxError>> {
     const corrId = inputs.correlationId ? inputs.correlationId : "";
     const res = await Correlator.runWithId(
       corrId,
@@ -285,7 +287,7 @@ export default class ServerConnection implements IServerConnection {
     funcId: number,
     params: Inputs,
     token: CancellationToken
-  ): Promise<Result<Void, FxError>> {
+  ): Promise<Result<undefined, FxError>> {
     const res = await callFunc("LocalFunc", funcId, params);
     return standardizeResult(res);
   }
@@ -343,14 +345,6 @@ export default class ServerConnection implements IServerConnection {
     return standardizeResult(res);
   }
 
-  public async getProjectComponents(
-    inputs: Inputs,
-    token: CancellationToken
-  ): Promise<Result<string | undefined, FxError>> {
-    // No components for V5
-    return ok("");
-  }
-
   public async getProjectMigrationStatusRequest(
     inputs: Inputs,
     token: CancellationToken
@@ -380,7 +374,7 @@ export default class ServerConnection implements IServerConnection {
   public async publishInDeveloperPortalRequest(
     inputs: Inputs,
     token: CancellationToken
-  ): Promise<Result<Void, FxError>> {
+  ): Promise<Result<undefined, FxError>> {
     const corrId = inputs.correlationId ? inputs.correlationId : "";
     const res = await Correlator.runWithId(
       corrId,
@@ -413,6 +407,19 @@ export default class ServerConnection implements IServerConnection {
     return standardizeResult(res);
   }
 
+  public async copilotPluginAddAPIRequest(
+    inputs: Inputs,
+    token: CancellationToken
+  ): Promise<Result<undefined, FxError>> {
+    const corrId = inputs.correlationId ? inputs.correlationId : "";
+    const res = await Correlator.runWithId(
+      corrId,
+      (inputs) => this.core.copilotPluginAddAPI(inputs),
+      inputs
+    );
+    return standardizeResult(res);
+  }
+
   public async loadOpenAIPluginManifestRequest(
     inputs: Inputs,
     token: CancellationToken
@@ -429,7 +436,7 @@ export default class ServerConnection implements IServerConnection {
   public async listOpenAPISpecOperationsRequest(
     inputs: Inputs,
     token: CancellationToken
-  ): Promise<Result<string[], FxError>> {
+  ): Promise<Result<ApiOperation[], FxError>> {
     const corrId = inputs.correlationId ? inputs.correlationId : "";
     const res = await Correlator.runWithId(
       corrId,

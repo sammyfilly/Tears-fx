@@ -44,38 +44,70 @@ export enum TemplateProject {
   QueryOrg = "Org User Search Connector",
   Deeplinking = "Hello World Deeplinking Navigation Tab App",
   Dashboard = "Team Central Dashboard",
-  DeveloperAssist = "Developer Assist Dashboard",
+  AssistDashboard = "Developer Assist Dashboard",
   DiceRoller = "Dice Roller in meeting",
   OutlookTab = "Hello World Teams Tab Outlook add-in",
   OutlookSignature = "Set signature using Outlook add-in",
-  AssistDashboard = "developer-assist-dashboard",
+  ChefBot = "Teams Chef Bot",
 }
 
 export enum TemplateProjectFolder {
   HelloWorldTabBackEnd = "hello-world-tab-with-backend",
   ContactExporter = "graph-toolkit-contact-exporter",
-  OneProductivityHub = "graph-toolkit-one-productivity-hub",
   HelloWorldBotSSO = "bot-sso",
-  TodoListBackend = "todo-list-with-Azure-backend",
   TodoListSpfx = "todo-list-SPFx",
-  ShareNow = "share-now",
   MyFirstMetting = "hello-world-in-meeting",
   TodoListM365 = "todo-list-with-Azure-backend-M365",
   NpmSearch = "NPM-search-connector-M365",
   ProactiveMessaging = "bot-proactive-messaging-teamsfx",
   AdaptiveCard = "adaptive-card-notification",
   IncomingWebhook = "incoming-webhook-notification",
-  GraphConnector = "graph-connector-app",
   StockUpdate = "stocks-update-notification-bot",
   QueryOrg = "query-org-user-with-message-extension-sso",
-  Deeplinking = "deep-linking-hello-world-tab-without-sso-M365",
+  GraphConnector = "graph-connector-app",
+  OneProductivityHub = "graph-toolkit-one-productivity-hub",
+  TodoListBackend = "todo-list-with-Azure-backend",
+  ShareNow = "share-now",
+  // v3 only
   Dashboard = "team-central-dashboard",
-  DeveloperAssist = "developer-assist-dashboard",
-  DiceRoller = "live-share-dice-roller",
+  OutlookSignature = "outlook-set-signature",
   OutlookTab = "hello-world-teams-tab-and-outlook-add-in",
-  OutlookSignature = "outlook-add-in-set-signature",
   AssistDashboard = "developer-assist-dashboard",
+  DiceRoller = "live-share-dice-roller",
+  ChefBot = "teams-chef-bot",
+  // v2 only
+  Deeplinking = "deep-linking-hello-world-tab-without-sso-M365",
 }
+
+export const sampleProjectMap: Record<TemplateProject, TemplateProjectFolder> =
+  {
+    [TemplateProject.HelloWorldTabBackEnd]:
+      TemplateProjectFolder.HelloWorldTabBackEnd,
+    [TemplateProject.ContactExporter]: TemplateProjectFolder.ContactExporter,
+    [TemplateProject.OneProductivityHub]:
+      TemplateProjectFolder.OneProductivityHub,
+    [TemplateProject.HelloWorldBotSSO]: TemplateProjectFolder.HelloWorldBotSSO,
+    [TemplateProject.TodoListBackend]: TemplateProjectFolder.TodoListBackend,
+    [TemplateProject.TodoListSpfx]: TemplateProjectFolder.TodoListSpfx,
+    [TemplateProject.ShareNow]: TemplateProjectFolder.ShareNow,
+    [TemplateProject.MyFirstMetting]: TemplateProjectFolder.MyFirstMetting,
+    [TemplateProject.TodoListM365]: TemplateProjectFolder.TodoListM365,
+    [TemplateProject.NpmSearch]: TemplateProjectFolder.NpmSearch,
+    [TemplateProject.ProactiveMessaging]:
+      TemplateProjectFolder.ProactiveMessaging,
+    [TemplateProject.AdaptiveCard]: TemplateProjectFolder.AdaptiveCard,
+    [TemplateProject.IncomingWebhook]: TemplateProjectFolder.IncomingWebhook,
+    [TemplateProject.GraphConnector]: TemplateProjectFolder.GraphConnector,
+    [TemplateProject.StockUpdate]: TemplateProjectFolder.StockUpdate,
+    [TemplateProject.QueryOrg]: TemplateProjectFolder.QueryOrg,
+    [TemplateProject.Deeplinking]: TemplateProjectFolder.Deeplinking,
+    [TemplateProject.Dashboard]: TemplateProjectFolder.Dashboard,
+    [TemplateProject.OutlookSignature]: TemplateProjectFolder.OutlookSignature,
+    [TemplateProject.OutlookTab]: TemplateProjectFolder.OutlookTab,
+    [TemplateProject.AssistDashboard]: TemplateProjectFolder.AssistDashboard,
+    [TemplateProject.DiceRoller]: TemplateProjectFolder.DiceRoller,
+    [TemplateProject.ChefBot]: TemplateProjectFolder.ChefBot,
+  };
 
 export enum Resource {
   AzureKeyVault = "azure-keyvault",
@@ -94,18 +126,19 @@ export enum ResourceToDeploy {
 }
 
 export enum Capability {
+  Bot = "bot",
   Notification = "notification",
   CommandBot = "command-bot",
   WorkflowBot = "workflow-bot",
-  DashboardTab = "dashboard-tab",
-  Tab = "tab",
   TabNonSso = "tab-non-sso",
-  Bot = "bot",
-  MessageExtension = "message-extension",
   M365SsoLaunchPage = "sso-launch-page",
-  M365SearchApp = "search-app",
+  DashboardTab = "dashboard-tab",
   Spfx = "tab-spfx",
-  BasicTab = "tab-non-sso",
+  M365SearchApp = "search-app",
+  MessageExtension = "message-extension",
+  LinkUnfruling = "link-unfurling",
+  // v2 only
+  Tab = "tab",
 }
 
 export enum Trigger {
@@ -142,6 +175,8 @@ export class Timeout {
   public static readonly shortTimeWait: number = 5 * 1000;
   public static readonly shortTimeLoading: number = 30 * 1000;
   public static readonly longTimeWait: number = 60 * 1000;
+  public static readonly stopdebugging: number = 30 * 1000;
+  public static readonly startdebugging: number = 30 * 1000;
 
   /**
    * Wait until extension is activated
@@ -257,23 +292,23 @@ export class FeatureFlagName {
   static readonly InsiderPreview = "__TEAMSFX_INSIDER_PREVIEW";
 }
 
-export class LocalDebugTaskLabel {
-  static readonly StartLocalTunnel = "Start local tunnel";
-  static readonly StartBot = "Start bot";
-  static readonly StartBotApp = "Start application";
-  static readonly StartFrontend = "Start frontend";
-  static readonly StartApplication = "Start application";
-  static readonly StartBackend = "Start backend";
-  static readonly StartWebhook = "Start Incoming Webhook";
-  static readonly WatchBackend = "Watch backend";
-  static readonly InstallNpmPackages = "Install npm packages";
-  static readonly ApiNpmInstall = "api npm install";
-  static readonly BotNpmInstall = "bot npm install";
-  static readonly TabsNpmInstall = "tabs npm install";
-  static readonly SpfxNpmInstall = "SPFx npm install";
-  static readonly GulpServe = "gulp serve";
-  static readonly Azurite = "Start Azurite emulator";
-  static readonly Compile = "Compile typescript";
+export enum LocalDebugTaskLabel {
+  StartLocalTunnel = "Start local tunnel",
+  StartBot = "Start bot",
+  StartBotApp = "Start application",
+  StartFrontend = "Start frontend",
+  StartApplication = "Start application",
+  StartBackend = "Start backend",
+  StartWebhook = "Start Incoming Webhook",
+  WatchBackend = "Watch backend",
+  InstallNpmPackages = "Install npm packages",
+  ApiNpmInstall = "api npm install",
+  BotNpmInstall = "bot npm install",
+  TabsNpmInstall = "tabs npm install",
+  SpfxNpmInstall = "SPFx npm install",
+  GulpServe = "gulp serve",
+  Azurite = "Start Azurite emulator",
+  Compile = "Compile typescript",
 }
 
 export class LocalDebugTaskResult {
@@ -292,6 +327,7 @@ export class LocalDebugTaskResult {
 export class LocalDebugTaskInfo {
   static readonly StartBotAppInfo = "App Started";
   static readonly StartBotInfo = "Bot Started";
+  static readonly StartBotInfo2 = "Bot started";
 }
 
 export class DebugItemSelect {
@@ -328,6 +364,7 @@ export class CreateProjectQuestion {
   static readonly NewTeamsApp = "Start with a Teams capability";
   static readonly SpfxSharepointFrameworkInTtk = "Install the latest SPFx";
   static readonly NewAddinApp = "Start with an Outlook add-in";
+  static readonly CreateNewSpfxSolution = "Create a New SPFx Solution";
 }
 
 export class ValidationContent {

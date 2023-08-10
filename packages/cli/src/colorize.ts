@@ -8,11 +8,12 @@ export enum TextType {
   Success = "success",
   Error = "error",
   Warning = "warning",
-  Info = "info",
+  Info = "info", // primary text
   Hyperlink = "hyperlink",
   Email = "email",
   Important = "important",
-  Details = "details",
+  Details = "details", // secondary text
+  Commands = "commands", // commands, parameters, system inputs
 }
 
 export function colorize(message: string, type: TextType): string {
@@ -34,7 +35,9 @@ export function colorize(message: string, type: TextType): string {
     case TextType.Important:
       return chalk.magentaBright(message);
     case TextType.Details:
-      return chalk.white(message);
+      return chalk.gray(message);
+    case TextType.Commands:
+      return chalk.blueBright(message);
   }
 }
 

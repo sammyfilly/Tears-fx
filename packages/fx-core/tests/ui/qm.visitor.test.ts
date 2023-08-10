@@ -6,7 +6,6 @@ import "mocha";
 import sinon from "sinon";
 import {
   Colors,
-  FuncQuestion,
   FxError,
   IProgressHandler,
   InputResult,
@@ -37,9 +36,15 @@ import {
   err,
   ok,
   SingleFileOrInputConfig,
+  IQTreeNode,
 } from "@microsoft/teamsfx-api";
-import { EmptyOptionError, UserCancelError } from "../../src/error/common";
-import { traverse } from "../../src/ui/visitor";
+import {
+  EmptyOptionError,
+  MissingRequiredInputError,
+  UserCancelError,
+} from "../../src/error/common";
+import { loadOptions, questionVisitor, traverse } from "../../src/ui/visitor";
+import mockedEnv, { RestoreFn } from "mocked-env";
 
 function createInputs(): Inputs {
   return {
@@ -55,12 +60,12 @@ function createTextQuestion(name: string): TextInputQuestion {
   };
 }
 
-function createSingleSelectQuestion(name: string): SingleSelectQuestion {
+function createSingleSelectQuestion(name: string, options?: string[]): SingleSelectQuestion {
   return {
     type: "singleSelect",
     name: name,
     title: name,
-    staticOptions: [],
+    staticOptions: options || [],
   };
 }
 
@@ -70,16 +75,6 @@ function createMultiSelectQuestion(name: string): MultiSelectQuestion {
     name: name,
     title: name,
     staticOptions: [],
-  };
-}
-
-function createFuncQuestion(name: string): FuncQuestion {
-  return {
-    type: "func",
-    name: name,
-    func: async (inputs: Inputs): Promise<string> => {
-      return `mocked value of ${name}`;
-    },
   };
 }
 
@@ -270,7 +265,7 @@ describe("Question Model - Visitor Test", () => {
       const res = await traverse(root, inputs, mockUI);
       assert.isTrue(res.isErr() && res.error instanceof UserCancelError);
       for (let i = 1; i < cancelNum; ++i) {
-        assert.isTrue(inputs[`${i}`] === `mocked value of ${i}`);
+        assert.isUndefined(inputs[`${i}`]);
       }
       assert.sameOrderedMembers(expectedSequence, actualSequence);
     });
@@ -331,95 +326,74 @@ describe("Question Model - Visitor Test", () => {
 
     it("success: flat sequence with back operation", async () => {
       const actualSequence: string[] = [];
-      const set = new Set<string>();
+      let backed = false;
       const inputs = createInputs();
       sandbox
         .stub(mockUI, "selectOption")
         .callsFake(
           async (config: SingleSelectConfig): Promise<Result<SingleSelectResult, FxError>> => {
             actualSequence.push(config.name);
-            assert.isTrue(inputs[config.name] === undefined);
-            let result: Result<SingleSelectResult, FxError>;
-            if (config.name === "1") {
-              result = ok({ type: "success", result: `mocked value of ${config.name}` });
-            } else {
-              if (set.has(config.name)) {
-                result = ok({ type: "success", result: `mocked value of ${config.name}` });
-              } else {
-                result = ok({ type: "back" });
-              }
+            if (config.name === "3" && !backed) {
+              backed = true;
+              return ok({ type: "back" });
             }
-            set.add(config.name);
-            return result;
+            return ok({ type: "success", result: `mocked value of ${config.name}` });
           }
         );
-      const root = new QTreeNode({ type: "group" });
-      const expectedSequence: string[] = ["1", "3", "1", "3", "5", "3", "5", "6", "5", "6"];
-
-      const question1 = createSingleSelectQuestion("1");
-      question1.staticOptions = [`mocked value of 1`, `mocked value of 1 - 2`];
-      root.addChild(new QTreeNode(question1));
-
-      const question2 = createSingleSelectQuestion("2");
-      question2.staticOptions = [`mocked value of 2`];
-      question2.skipSingleOption = true;
-      root.addChild(new QTreeNode(question2));
-
-      const question3 = createSingleSelectQuestion("3");
-      question3.staticOptions = [`mocked value of 3`, `mocked value of 3 - 2`];
-      root.addChild(new QTreeNode(question3));
-
-      const question4 = createFuncQuestion("4");
-      root.addChild(new QTreeNode(question4));
-
-      const question5 = createSingleSelectQuestion("5");
-      question5.staticOptions = [`mocked value of 5`, `mocked value of 5 - 2`];
-      root.addChild(new QTreeNode(question5));
-
-      const question6 = createSingleSelectQuestion("6");
-      question6.staticOptions = [`mocked value of 6`, `mocked value of 6 - 2`];
-      root.addChild(new QTreeNode(question6));
-
+      const root: IQTreeNode = {
+        data: { type: "group" },
+        children: [
+          {
+            data: createSingleSelectQuestion("1", ["1", "2", "3"]),
+          },
+          {
+            data: createSingleSelectQuestion("2", ["1", "2", "3"]),
+          },
+          {
+            data: createSingleSelectQuestion("3", ["1", "2", "3"]),
+          },
+        ],
+      };
+      const expectedSequence: string[] = ["1", "2", "3", "2", "3"];
       const res = await traverse(root, inputs, mockUI);
       assert.isTrue(res.isOk());
-      for (let i = 1; i <= 6; ++i) {
-        assert.isTrue(inputs[`${i}`] === `mocked value of ${i}`);
-      }
       assert.sameOrderedMembers(expectedSequence, actualSequence);
     });
 
     it("fail: go back from start and cancel", async () => {
       const actualSequence: string[] = [];
       const inputs = createInputs();
+      let count = 0;
       sandbox
         .stub(mockUI, "selectOption")
         .callsFake(
           async (config: SingleSelectConfig): Promise<Result<SingleSelectResult, FxError>> => {
             actualSequence.push(config.name);
-            assert.isTrue(inputs[config.name] === undefined);
-            return ok({ type: "back" });
+            count++;
+            if (count >= 3) {
+              return ok({ type: "back" });
+            }
+            return ok({ type: "success", result: `mocked value of ${config.name}` });
           }
         );
-      const root = new QTreeNode({ type: "group" });
-      const expectedSequence: string[] = ["3"];
-
-      const question1 = createSingleSelectQuestion("1");
-      question1.staticOptions = [`mocked value of 1`];
-      question1.skipSingleOption = true;
-      root.addChild(new QTreeNode(question1));
-
-      const question2 = createFuncQuestion("2");
-      root.addChild(new QTreeNode(question2));
-
-      const question3 = createSingleSelectQuestion("3");
-      question3.staticOptions = [`mocked value of 3`, `mocked value of 3 - 2`];
-      root.addChild(new QTreeNode(question3));
+      const expectedSequence: string[] = ["1", "2", "3", "2", "1"];
+      const root: IQTreeNode = {
+        data: { type: "group" },
+        children: [
+          {
+            data: createSingleSelectQuestion("1", ["1", "2", "3"]),
+          },
+          {
+            data: createSingleSelectQuestion("2", ["1", "2", "3"]),
+          },
+          {
+            data: createSingleSelectQuestion("3", ["1", "2", "3"]),
+          },
+        ],
+      };
 
       const res = await traverse(root, inputs, mockUI);
       assert.isTrue(res.isErr() && res.error instanceof UserCancelError);
-      for (let i = 1; i <= 3; ++i) {
-        assert.isTrue(inputs[`${i}`] === undefined);
-      }
       assert.sameOrderedMembers(expectedSequence, actualSequence);
     });
 
@@ -724,6 +698,7 @@ describe("Question Model - Visitor Test", () => {
           label: "input",
         },
         inputBoxConfig: {
+          type: "text",
           name: "input",
           title: "input",
         },
@@ -749,9 +724,12 @@ describe("Question Model - Visitor Test", () => {
         },
         inputBoxConfig: {
           name: "input",
+          type: "text",
           title: "input",
-          additionalValidationOnAccept: async (input) => {
-            return undefined;
+          additionalValidationOnAccept: {
+            validFunc: async (input) => {
+              return undefined;
+            },
           },
         },
         validation: validation,
@@ -760,6 +738,144 @@ describe("Question Model - Visitor Test", () => {
       const res = await traverse(new QTreeNode(question), inputs, mockUI);
       assert.isTrue(res.isOk());
       assert.isTrue(inputs["test"] === "file");
+    });
+
+    it("the order of condition visit should be in DFS order", async () => {
+      const actualSequence: string[] = [];
+      sandbox.stub(mockUI, "inputText").callsFake(async (config: InputTextConfig) => {
+        actualSequence.push(config.name);
+        return ok({ type: "success", result: config.name });
+      });
+      const node: IQTreeNode = {
+        data: {
+          type: "text",
+          title: "1",
+          name: "1",
+        },
+        children: [
+          {
+            data: {
+              type: "text",
+              title: "2",
+              name: "2",
+            },
+            children: [
+              {
+                data: {
+                  type: "text",
+                  title: "3",
+                  name: "3",
+                },
+              },
+            ],
+          },
+          {
+            data: {
+              type: "text",
+              title: "4",
+              name: "4",
+            },
+            condition: (inputs) => inputs["3"] === "3",
+          },
+        ],
+      };
+
+      const expectedSequence = ["1", "2", "3", "4"];
+
+      const inputs = createInputs();
+      const res = await traverse(node, inputs, mockUI);
+      assert.isTrue(res.isOk());
+
+      assert.sameOrderedMembers(expectedSequence, actualSequence);
+    });
+  });
+
+  describe("questionVisitor", () => {
+    let mockedEnvRestore: RestoreFn = () => {};
+    afterEach(() => {
+      mockedEnvRestore();
+    });
+    it("should return error for non-interactive mode", async () => {
+      mockedEnvRestore = mockedEnv({ TEAMSFX_CLI_NEW_UX: "true" });
+      const question: TextInputQuestion = {
+        type: "text",
+        name: "test",
+        title: "test",
+      };
+      const inputs: Inputs = {
+        platform: Platform.VSCode,
+        nonInteractive: true,
+      };
+      const res = await questionVisitor(question, new MockUserInteraction(), inputs);
+      assert.isTrue(res.isErr() && res.error instanceof MissingRequiredInputError);
+    });
+
+    it("should return empty option error for non-interactive mode", async () => {
+      mockedEnvRestore = mockedEnv({ TEAMSFX_CLI_NEW_UX: "true" });
+      const question: SingleSelectQuestion = {
+        type: "singleSelect",
+        name: "test",
+        title: "test",
+        staticOptions: [],
+        skipSingleOption: true,
+      };
+      const inputs: Inputs = {
+        platform: Platform.VSCode,
+        nonInteractive: true,
+      };
+      const res = await questionVisitor(question, new MockUserInteraction(), inputs);
+      assert.isTrue(res.isErr() && res.error instanceof EmptyOptionError);
+    });
+
+    it("should return single option for non-interactive mode", async () => {
+      mockedEnvRestore = mockedEnv({ TEAMSFX_CLI_NEW_UX: "true" });
+      const question: SingleSelectQuestion = {
+        type: "singleSelect",
+        name: "test",
+        title: "test",
+        staticOptions: ["a"],
+        skipSingleOption: true,
+      };
+      const inputs: Inputs = {
+        platform: Platform.VSCode,
+        nonInteractive: true,
+      };
+      const res = await questionVisitor(question, new MockUserInteraction(), inputs);
+      assert.isTrue(res.isOk() && res.value.type === "skip" && res.value.result === "a");
+    });
+
+    it("should return default value for non-interactive mode", async () => {
+      mockedEnvRestore = mockedEnv({ TEAMSFX_CLI_NEW_UX: "true" });
+      const question: SingleSelectQuestion = {
+        type: "singleSelect",
+        name: "test",
+        title: "test",
+        staticOptions: ["a", "b"],
+        default: "b",
+        skipSingleOption: true,
+      };
+      const inputs: Inputs = {
+        platform: Platform.VSCode,
+        nonInteractive: true,
+      };
+      const res = await questionVisitor(question, new MockUserInteraction(), inputs);
+      assert.isTrue(res.isOk() && res.value.type === "skip" && res.value.result === "b");
+    });
+  });
+
+  describe("loadOptions", async () => {
+    it("load dynamic options", async () => {
+      const options = await loadOptions(
+        {
+          type: "singleSelect",
+          name: "test",
+          title: "test",
+          dynamicOptions: () => ["a"],
+          staticOptions: [],
+        },
+        { platform: Platform.VSCode }
+      );
+      assert.deepEqual(options, ["a"]);
     });
   });
 });

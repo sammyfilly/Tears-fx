@@ -13,6 +13,19 @@ import { Result } from 'neverthrow';
 import { TokenCredential } from '@azure/core-auth';
 
 // @public (undocumented)
+export const AdaptiveFolderName = "adaptiveCards";
+
+// @public (undocumented)
+export interface ApiOperation {
+    // (undocumented)
+    groupName: string;
+    // (undocumented)
+    id: string;
+    // (undocumented)
+    label: string;
+}
+
+// @public (undocumented)
 export const AppPackageFolderName = "appPackage";
 
 // @public (undocumented)
@@ -64,6 +77,8 @@ export interface BaseQuestion {
     title?: string | LocalFunc<string | undefined>;
     totalSteps?: number;
     value?: unknown;
+    // (undocumented)
+    valueType?: "skip" | "success";
 }
 
 // @public
@@ -83,8 +98,91 @@ export abstract class BasicLogin {
 // @public (undocumented)
 export const BuildFolderName = "build";
 
+// Warning: (ae-forgotten-export) The symbol "CLICommandOptionBase" needs to be exported by the entry point index.d.ts
+//
+// @public (undocumented)
+export interface CLIArrayOption extends CLICommandOptionBase {
+    choiceListCommand?: string;
+    choices?: string[];
+    default?: string[];
+    skipValidation?: boolean;
+    // (undocumented)
+    type: "array";
+    value?: string[];
+}
+
+// @public (undocumented)
+export interface CLIBooleanOption extends CLICommandOptionBase {
+    default?: boolean;
+    // (undocumented)
+    type: "boolean";
+    value?: boolean;
+}
+
+// @public (undocumented)
+export interface CLICommand {
+    arguments?: CLICommandArgument[];
+    commands?: CLICommand[];
+    description: string;
+    examples?: CLIExample[];
+    footer?: string;
+    fullName?: string;
+    handler?: (ctx: CLIContext) => Promise<Result<undefined, FxError>>;
+    header?: string;
+    hidden?: boolean;
+    name: string;
+    options?: CLICommandOption[];
+    sortCommands?: boolean;
+    sortOptions?: boolean;
+    telemetry?: {
+        event: string;
+    };
+    version?: string;
+}
+
+// @public (undocumented)
+export type CLICommandArgument = CLICommandOption;
+
+// @public (undocumented)
+export type CLICommandOption = CLIBooleanOption | CLIStringOption | CLIArrayOption;
+
+// @public (undocumented)
+export interface CLIContext {
+    argumentValues: string[];
+    command: CLIFoundCommand;
+    globalOptionValues: Record<string, OptionValue>;
+    optionValues: Record<string, OptionValue>;
+    telemetryProperties: Record<string, string>;
+}
+
+// @public (undocumented)
+export interface CLIExample {
+    command: string;
+    description: string;
+}
+
+// @public (undocumented)
+export interface CLIFoundCommand extends CLICommand {
+    // (undocumented)
+    fullName: string;
+}
+
+// @public (undocumented)
+export type CLIOptionType = "boolean" | "string" | "array";
+
 // @public (undocumented)
 export const CLIPlatforms: Platform[];
+
+// @public (undocumented)
+export interface CLIStringOption extends CLICommandOptionBase {
+    choiceListCommand?: string;
+    choices?: string[];
+    default?: string;
+    skipValidation?: boolean;
+    // (undocumented)
+    type: "string";
+    value?: string;
+}
 
 // @public
 export enum Colors {
@@ -129,6 +227,14 @@ export enum CoreCallbackEvent {
     lock = "lock",
     // (undocumented)
     unlock = "unlock"
+}
+
+// @public (undocumented)
+export interface CreateProjectResult {
+    // (undocumented)
+    projectPath: string;
+    // (undocumented)
+    warnings?: Warning[];
 }
 
 // @public
@@ -208,13 +314,6 @@ export interface Func extends FunctionRouter {
     params?: any;
 }
 
-// @public
-export interface FuncQuestion extends BaseQuestion {
-    func: LocalFunc<any>;
-    // (undocumented)
-    type: "func";
-}
-
 // @public (undocumented)
 export interface FunctionRouter {
     // (undocumented)
@@ -259,51 +358,15 @@ export interface InputResult<T> {
 // @public (undocumented)
 export interface Inputs extends Record<string, any> {
     // (undocumented)
-    env?: string;
+    correlationId?: string;
     // (undocumented)
-    existingResources?: string[];
-    // (undocumented)
-    globalSpfxPackageVersion?: string;
-    // (undocumented)
-    globalYeomanPackageVersion?: string;
-    // (undocumented)
-    ignoreConfigPersist?: boolean;
-    // (undocumented)
-    ignoreEnvInfo?: boolean;
-    // (undocumented)
-    inProductDoc?: boolean;
-    // (undocumented)
-    isM365?: boolean;
-    // (undocumented)
-    latestSpfxPackageVersion?: string;
-    // (undocumented)
-    locale?: string;
-    // (undocumented)
-    openAIPluginManifest?: OpenAIPluginManifest;
+    nonInteractive?: boolean;
     // (undocumented)
     platform: Platform;
     // (undocumented)
     projectId?: string;
     // (undocumented)
     projectPath?: string;
-    // (undocumented)
-    sourceEnvName?: string;
-    // (undocumented)
-    stage?: Stage;
-    // (undocumented)
-    supportedApisFromApiSpec?: string[];
-    // (undocumented)
-    targetEnvName?: string;
-    // (undocumented)
-    targetResourceGroupName?: string;
-    // (undocumented)
-    targetResourceLocationName?: string;
-    // (undocumented)
-    targetSubscriptionId?: string;
-    // (undocumented)
-    teamsAppFromTdp?: any;
-    // (undocumented)
-    vscodeEnv?: VsCodeEnv;
 }
 
 // @public (undocumented)
@@ -333,10 +396,12 @@ export interface IProgressHandler {
 export interface IQTreeNode {
     // (undocumented)
     children?: IQTreeNode[];
+    cliOptionDisabled?: "self" | "children" | "all";
     // (undocumented)
     condition?: StringValidation | StringArrayValidation | ConditionFunc;
     // (undocumented)
     data: Question | Group;
+    inputsDisabled?: "self" | "children" | "all";
 }
 
 // @public (undocumented)
@@ -411,6 +476,9 @@ export type ManifestCapability = {
 };
 
 // @public (undocumented)
+export const ManifestTemplateFileName = "manifest.json";
+
+// @public (undocumented)
 export type MaybePromise<T> = T | Promise<T>;
 
 // @public (undocumented)
@@ -434,11 +502,13 @@ export interface MultiSelectConfig extends UIConfig<string[]> {
 
 // @public
 export interface MultiSelectQuestion extends UserInputQuestion {
+    cliChoiceListCommand?: string;
     default?: string[] | LocalFunc<string[] | undefined>;
     dynamicOptions?: DynamicOptions;
     onDidChangeSelection?: OnSelectionChangeFunc;
     returnObject?: boolean;
     skipSingleOption?: boolean;
+    skipValidation?: boolean;
     staticOptions: StaticOptions;
     // (undocumented)
     type: "multiSelect";
@@ -500,6 +570,7 @@ export interface OptionItem {
         tooltip: string;
         command: string;
     }[];
+    // @deprecated (undocumented)
     cliName?: string;
     data?: unknown;
     description?: string;
@@ -508,6 +579,9 @@ export interface OptionItem {
     id: string;
     label: string;
 }
+
+// @public (undocumented)
+export type OptionValue = string | boolean | string[] | undefined;
 
 // @public
 export interface PermissionRequestProvider {
@@ -537,17 +611,19 @@ export class QTreeNode implements IQTreeNode {
     addChild(node: QTreeNode): QTreeNode;
     // (undocumented)
     children?: QTreeNode[];
+    cliOptionDisabled?: "self" | "children" | "all";
     // (undocumented)
     condition?: StringValidation | StringArrayValidation | ConditionFunc;
     // (undocumented)
     data: Question | Group;
+    inputsDisabled?: "self" | "children" | "all";
     trim(): QTreeNode | undefined;
     // (undocumented)
     validate(): boolean;
 }
 
 // @public (undocumented)
-export type Question = SingleSelectQuestion | MultiSelectQuestion | TextInputQuestion | SingleFileQuestion | MultiFileQuestion | FolderQuestion | FuncQuestion | SingleFileQuestion | SingleFileOrInputQuestion;
+export type Question = SingleSelectQuestion | MultiSelectQuestion | TextInputQuestion | SingleFileQuestion | MultiFileQuestion | FolderQuestion | SingleFileQuestion | SingleFileOrInputQuestion;
 
 // @public
 export type SelectFileConfig = UIConfig<string> & {
@@ -609,7 +685,7 @@ export interface SingleFileOrInputQuestion extends UserInputQuestion {
     filters?: {
         [name: string]: string[];
     };
-    inputBoxConfig: InputTextConfig;
+    inputBoxConfig: TextInputQuestion;
     inputOptionItem: OptionItem;
     // (undocumented)
     type: "singleFileOrText";
@@ -638,10 +714,12 @@ export interface SingleSelectConfig extends UIConfig<string> {
 
 // @public
 export interface SingleSelectQuestion extends UserInputQuestion {
+    cliChoiceListCommand?: string;
     default?: string | LocalFunc<string | undefined>;
     dynamicOptions?: DynamicOptions;
     returnObject?: boolean;
     skipSingleOption?: boolean;
+    skipValidation?: boolean;
     staticOptions: StaticOptions;
     // (undocumented)
     type: "singleSelect";
@@ -966,9 +1044,18 @@ export interface UserErrorOptions extends ErrorOptionBase {
 
 // @public
 export interface UserInputQuestion extends BaseQuestion {
+    alternativeNames?: string[];
+    // (undocumented)
+    cliDescription?: string;
+    cliHidden?: boolean;
+    cliName?: string;
+    cliShortName?: string;
+    cliType?: "option" | "argument";
     default?: string | string[] | LocalFunc<string | string[] | undefined>;
+    isBoolean?: boolean;
     placeholder?: string | LocalFunc<string | undefined>;
     prompt?: string | LocalFunc<string | undefined>;
+    required?: boolean;
     title: string | LocalFunc<string | undefined>;
     type: "singleSelect" | "multiSelect" | "singleFile" | "multiFile" | "folder" | "text" | "singleFileOrText";
     validation?: ValidationSchema;
@@ -1030,6 +1117,14 @@ export enum VsCodeEnv {
     local = "local",
     // (undocumented)
     remote = "remote"
+}
+
+// @public (undocumented)
+export interface Warning {
+    // (undocumented)
+    content: string;
+    // (undocumented)
+    type: string;
 }
 
 

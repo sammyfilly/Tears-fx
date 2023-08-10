@@ -14,6 +14,7 @@ import { hooks } from "@feathersjs/hooks/lib";
 import {
   Colors,
   Context,
+  CreateProjectResult,
   err,
   FxError,
   Inputs,
@@ -21,7 +22,6 @@ import {
   ok,
   Platform,
   Result,
-  Void,
 } from "@microsoft/teamsfx-api";
 import { glob } from "glob";
 import { getLocalizedString } from "../../common/localizeUtils";
@@ -54,6 +54,7 @@ import { developerPortalScaffoldUtils } from "../developerPortalScaffoldUtils";
 import { DriverContext } from "../driver/interface/commonArgs";
 import { updateTeamsAppV3ForPublish } from "../driver/teamsApp/appStudio";
 import { AppStudioScopes, Constants } from "../driver/teamsApp/constants";
+import { CopilotPluginGenerator } from "../generator/copilotPlugin/generator";
 import { Generator } from "../generator/generator";
 import { OfficeAddinGenerator } from "../generator/officeAddin/generator";
 import { SPFxGenerator } from "../generator/spfx/spfxGenerator";
@@ -66,7 +67,6 @@ import { pathUtils } from "../utils/pathUtils";
 import { resourceGroupHelper, ResourceGroupInfo } from "../utils/ResourceGroupHelper";
 import { settingsUtil } from "../utils/settingsUtil";
 import { SummaryReporter } from "./summary";
-import { CopilotPluginGenerator } from "../generator/copilotPlugin/generator";
 
 export enum TemplateNames {
   Tab = "non-sso-tab",
@@ -82,11 +82,14 @@ export enum TemplateNames {
   Workflow = "workflow",
   DefaultBot = "default-bot",
   MessageExtension = "message-extension",
+  MessageExtensionAction = "message-extension-action",
   M365MessageExtension = "m365-message-extension",
   TabAndDefaultBot = "non-sso-tab-default-bot",
   BotAndMessageExtension = "default-bot-message-extension",
   SsoTabObo = "sso-tab-with-obo-flow",
   LinkUnfurling = "link-unfurling",
+  CopilotPluginFromScratch = "copilot-plugin-from-scratch",
+  AIBot = "ai-bot",
 }
 
 const Feature2TemplateName: any = {
@@ -106,6 +109,7 @@ const Feature2TemplateName: any = {
   [`${CapabilityOptions.commandBot().id}:undefined`]: TemplateNames.CommandAndResponse,
   [`${CapabilityOptions.workflowBot().id}:undefined`]: TemplateNames.Workflow,
   [`${CapabilityOptions.basicBot().id}:undefined`]: TemplateNames.DefaultBot,
+  [`${CapabilityOptions.collectFormMe().id}:undefined`]: TemplateNames.MessageExtensionAction,
   [`${CapabilityOptions.me().id}:undefined`]: TemplateNames.MessageExtension,
   [`${CapabilityOptions.m365SearchMe().id}:undefined`]: TemplateNames.M365MessageExtension,
   [`${CapabilityOptions.tab().id}:undefined`]: TemplateNames.SsoTab,
@@ -115,6 +119,9 @@ const Feature2TemplateName: any = {
   [`${CapabilityOptions.nonSsoTabAndBot().id}:undefined`]: TemplateNames.TabAndDefaultBot,
   [`${CapabilityOptions.botAndMe().id}:undefined`]: TemplateNames.BotAndMessageExtension,
   [`${CapabilityOptions.linkUnfurling().id}:undefined`]: TemplateNames.LinkUnfurling,
+  [`${CapabilityOptions.copilotPluginNewApi().id}:undefined`]:
+    TemplateNames.CopilotPluginFromScratch,
+  [`${CapabilityOptions.aiBot().id}:undefined`]: TemplateNames.AIBot,
 };
 
 const M365Actions = [
@@ -147,13 +154,14 @@ class Coordinator {
     context: Context,
     inputs: Inputs,
     actionContext?: ActionContext
-  ): Promise<Result<string, FxError>> {
+  ): Promise<Result<CreateProjectResult, FxError>> {
     const folder = inputs["folder"] as string;
     if (!folder) {
       return err(new MissingRequiredInputError("folder"));
     }
     const scratch = inputs[QuestionNames.Scratch] as string;
     let projectPath = "";
+    let warnings = undefined;
     if (scratch === ScratchOptions.no().id) {
       // create from sample
       const sampleId = inputs[QuestionNames.Samples] as string;
@@ -193,7 +201,13 @@ class Coordinator {
       // set isVS global var when creating project
       const language = inputs[QuestionNames.ProgrammingLanguage];
       globalVars.isVS = language === "csharp";
-      const capability = inputs.capabilities as string;
+      let capability = inputs.capabilities as string;
+      if (
+        inputs.platform === Platform.CLI &&
+        capability === CapabilityOptions.copilotPluginCli().id
+      ) {
+        capability = inputs[QuestionNames.CopilotPluginDevelopment] as string;
+      }
       delete inputs.folder;
 
       merge(actionContext?.telemetryProps, {
@@ -210,12 +224,14 @@ class Coordinator {
           return err(res.error);
         }
       } else if (
-        inputs[QuestionNames.Capabilities] === CapabilityOptions.copilotPluginApiSpec().id ||
-        inputs[QuestionNames.Capabilities] === CapabilityOptions.copilotPluginOpenAIPlugin().id
+        capability === CapabilityOptions.copilotPluginApiSpec().id ||
+        capability === CapabilityOptions.copilotPluginOpenAIPlugin().id
       ) {
         const res = await CopilotPluginGenerator.generate(context, inputs, projectPath);
         if (res.isErr()) {
           return err(res.error);
+        } else {
+          warnings = res.value.warnings;
         }
       } else {
         if (
@@ -233,6 +249,8 @@ class Coordinator {
           context.templateVariables = Generator.getDefaultVariables(appName, safeProjectNameFromVS);
           const res = await Generator.generateTemplate(context, projectPath, templateName, langKey);
           if (res.isErr()) return err(res.error);
+        } else {
+          return err(new MissingRequiredInputError(QuestionNames.Capabilities, "coordinator"));
         }
       }
     }
@@ -257,7 +275,7 @@ class Coordinator {
         return err(res.error);
       }
     }
-    return ok(projectPath);
+    return ok({ projectPath: projectPath, warnings });
   }
 
   async ensureTeamsFxInCsproj(projectPath: string): Promise<Result<undefined, FxError>> {
@@ -380,7 +398,7 @@ class Coordinator {
   async preCheckYmlAndEnvForVS(
     ctx: DriverContext,
     inputs: InputsWithProjectPath
-  ): Promise<Result<Void, FxError>> {
+  ): Promise<Result<undefined, FxError>> {
     const templatePath =
       inputs["workflowFilePath"] || pathUtils.getYmlFilePath(ctx.projectPath, inputs.env);
     const maybeProjectModel = await metadataUtil.parse(templatePath, inputs.env);
@@ -400,7 +418,7 @@ class Coordinator {
     if (unresolvedPlaceholders.length > 0) {
       return err(new LifeCycleUndefinedError(unresolvedPlaceholders.join(",")));
     }
-    return ok(Void);
+    return ok(undefined);
   }
 
   @hooks([
@@ -442,7 +460,7 @@ class Coordinator {
     let containsAzure = false;
     const tenantSwitchCheckActions: string[] = [];
     cycles.forEach((cycle) => {
-      cycle!.driverDefs?.forEach((def) => {
+      cycle.driverDefs?.forEach((def) => {
         if (M365Actions.includes(def.uses)) {
           containsM365 = true;
         } else if (AzureActions.includes(def.uses)) {
@@ -877,7 +895,7 @@ class Coordinator {
     ctx: Context,
     inputs: InputsWithProjectPath,
     actionContext?: ActionContext
-  ): Promise<Result<Void, FxError>> {
+  ): Promise<Result<undefined, FxError>> {
     // update teams app
     if (!ctx.tokenProvider) {
       return err(new ObjectIsUndefinedError("tokenProvider"));
@@ -900,7 +918,7 @@ class Coordinator {
     await ctx.userInteraction.openUrl(
       `https://dev.teams.microsoft.com/apps/${updateRes.value}/distributions/app-catalog?login_hint=${loginHint}&referrer=teamstoolkit_${inputs.platform}`
     );
-    return ok(Void);
+    return ok(undefined);
   }
 }
 
@@ -929,7 +947,7 @@ function getBotTroubleShootMessage(isBot: boolean): BotTroubleShootMessage {
 }
 
 async function downloadSampleHook(sampleId: string, sampleAppPath: string): Promise<void> {
-  // A temporary solution to avoid duplicate componentId
+  // A temporary solution to aundefined duplicate componentId
   if (sampleId === "todo-list-SPFx") {
     const originalId = "c314487b-f51c-474d-823e-a2c3ec82b1ff";
     const componentId = uuid.v4();

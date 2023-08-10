@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { FxError, LogLevel, Result, err, ok } from "@microsoft/teamsfx-api";
+import { FxError, Inputs, LogLevel, Result, err, ok } from "@microsoft/teamsfx-api";
 import { CoreQuestionNames } from "@microsoft/teamsfx-core";
 import path from "path";
 import { Argv } from "yargs";
@@ -17,15 +17,16 @@ import {
 import CLIUIInstance from "../userInteraction";
 import { getSystemInputs } from "../utils";
 import { YargsCommand } from "../yargsCommand";
-import { MissingRequiredArgumentError } from "../error";
+import { MissingRequiredOptionError } from "../error";
+import { globals } from "../globals";
 
-const azureMessage =
+export const azureMessage =
   "Notice: Azure resources permission needs to be handled by subscription owner since privileged account is " +
   "required to grant permission to Azure resources.\n" +
   "Assign Azure roles using the Azure portal: " +
   "https://docs.microsoft.com/en-us/azure/role-based-access-control/role-assignments-portal?tabs=current";
 
-const spfxMessage =
+export const spfxMessage =
   "Notice: SPFX deployment permission needs to be handled manually by SharePoint site administrator.\n" +
   "Manage site admins using SharePoint admin center: " +
   "https://docs.microsoft.com/en-us/sharepoint/manage-site-collection-administrators";
@@ -34,6 +35,19 @@ const env = "env";
 const teamsAppManifest = "teams-app-manifest";
 const aadAppManifest = "aad-app-manifest";
 
+export function setAppTypeInputs(inputs: Inputs): void {
+  if (!CLIUIInstance.interactive) {
+    // automatically set collaborationType in non-interactive mode
+    inputs[CoreQuestionNames.collaborationAppType] = [];
+    if (inputs[CoreQuestionNames.AadAppManifestFilePath]) {
+      inputs[CoreQuestionNames.collaborationAppType].push("aadApp");
+    }
+    if (inputs[CoreQuestionNames.TeamsAppManifestFilePath]) {
+      inputs[CoreQuestionNames.collaborationAppType].push("teamsApp");
+    }
+  }
+}
+
 export class PermissionStatus extends YargsCommand {
   public readonly commandHead = `status`;
   public readonly command = `${this.commandHead}`;
@@ -41,6 +55,7 @@ export class PermissionStatus extends YargsCommand {
   private readonly listAllCollaborators = "list-all-collaborators";
 
   public builder(yargs: Argv): Argv<any> {
+    globals.options = ["teams-app-manifest", "aad-app-manifest", "env"];
     return yargs
       .options(RootFolderOptions)
       .options(this.listAllCollaborators, {
@@ -81,7 +96,7 @@ export class PermissionStatus extends YargsCommand {
 
     // Throw error if --env not specified
     if (!args[env] && !CLIUIInstance.interactive) {
-      const error = new MissingRequiredArgumentError("teamsfx status", "env");
+      const error = new MissingRequiredOptionError("teamsfx status", "env");
       CliTelemetry.sendTelemetryErrorEvent(TelemetryEvent.CheckPermission, error);
       return err(error);
     }
@@ -94,7 +109,7 @@ export class PermissionStatus extends YargsCommand {
     inputs[CoreQuestionNames.AadAppManifestFilePath] = args[aadAppManifest];
     inputs[CoreQuestionNames.TeamsAppManifestFilePath] = args[teamsAppManifest];
     inputs[env] = args[env];
-
+    setAppTypeInputs(inputs);
     {
       const result = listAll
         ? await core.listCollaborator(inputs)
@@ -122,6 +137,7 @@ export class PermissionGrant extends YargsCommand {
   public readonly description = "Grant permission for another account.";
 
   public builder(yargs: Argv): Argv<any> {
+    globals.options = ["teams-app-manifest", "aad-app-manifest", "env", "email"];
     return yargs
       .options(RootFolderOptions)
       .options(CollaboratorEmailOptions)
@@ -157,7 +173,7 @@ export class PermissionGrant extends YargsCommand {
 
     // Throw error if --env not specified
     if (!args[env] && !CLIUIInstance.interactive) {
-      const error = new MissingRequiredArgumentError("teamsfx grant", "env");
+      const error = new MissingRequiredOptionError("teamsfx grant", "env");
       CliTelemetry.sendTelemetryErrorEvent(TelemetryEvent.GrantPermission, error);
       return err(error);
     }
@@ -171,7 +187,7 @@ export class PermissionGrant extends YargsCommand {
     answers[CoreQuestionNames.AadAppManifestFilePath] = args[aadAppManifest];
     answers[CoreQuestionNames.TeamsAppManifestFilePath] = args[teamsAppManifest];
     answers[env] = args[env];
-
+    setAppTypeInputs(answers);
     {
       const result = await core.grantPermission(answers);
       if (result.isErr()) {

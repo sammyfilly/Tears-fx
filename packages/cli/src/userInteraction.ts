@@ -26,6 +26,7 @@ import {
   SelectFilesResult,
   SelectFolderConfig,
   SelectFolderResult,
+  SingleFileOrInputConfig,
   SingleSelectConfig,
   SingleSelectResult,
   StaticOptions,
@@ -36,6 +37,7 @@ import {
 
 import {
   InputValidationError,
+  MissingRequiredInputError,
   SelectSubscriptionError,
   UnhandledError,
   assembleError,
@@ -50,6 +52,7 @@ import { UserSettings } from "./userSetttings";
 import { getColorizedString, toLocaleLowerCase } from "./utils";
 import * as util from "util";
 import { strings } from "./resource";
+import { globals } from "./globals";
 /// TODO: input can be undefined
 type ValidationType<T> = (input: T) => string | boolean | Promise<string | boolean>;
 
@@ -155,15 +158,16 @@ class CLIUserInteraction implements UserInteraction {
   }
 
   private async runInquirer<T>(question: DistinctQuestion): Promise<Result<T, FxError>> {
-    if (this.presetAnswers.has(question.name!)) {
-      const answer = this.presetAnswers.get(question.name!);
+    const questionName = question.name!;
+    if (this.presetAnswers.has(questionName)) {
+      const answer = this.presetAnswers.get(questionName);
       if (answer === undefined) {
         /// TOOD: this is only for APIM
         return ok(answer);
       }
       const result = await question.validate?.(answer);
       if (typeof result === "string") {
-        return err(new InputValidationError(question.name!, result));
+        return err(new InputValidationError(questionName, result));
       }
       return ok(answer);
     }
@@ -173,7 +177,12 @@ class CLIUserInteraction implements UserInteraction {
       if (question.default !== undefined) {
         // if it has a defualt value, return it at first.
         return ok(question.default);
-      } else if (
+      }
+      if (globals.options.includes(questionName)) {
+        // if the question is the required option, return error if value is missing
+        return err(new MissingRequiredInputError(questionName, cliSource));
+      }
+      if (
         question.type === "list" &&
         Array.isArray(question.choices) &&
         question.choices.length > 0
@@ -412,14 +421,14 @@ class CLIUserInteraction implements UserInteraction {
           error.source = cliSource;
           resolve(err(error));
         }
-        const anwser = (config.options as StaticOptions)[index];
-        if (config.returnObject) {
-          resolve(ok({ type: "success", result: anwser }));
+        const answer = (config.options as StaticOptions)[index];
+        if (!answer || config.returnObject) {
+          resolve(ok({ type: "success", result: answer }));
         } else {
-          if (typeof anwser === "string") {
-            resolve(ok({ type: "success", result: anwser }));
+          if (typeof answer === "string") {
+            resolve(ok({ type: "success", result: answer }));
           } else {
-            resolve(ok({ type: "success", result: anwser.id }));
+            resolve(ok({ type: "success", result: answer.id }));
           }
         }
       } else {
@@ -547,13 +556,29 @@ class CLIUserInteraction implements UserInteraction {
     if (loadRes.isErr()) {
       return err(loadRes.error);
     }
+
+    let validationFunc: (input: string) => string | undefined | Promise<string | undefined>;
+    if (config.validation || config.additionalValidationOnAccept) {
+      validationFunc = async (input: string) => {
+        let res: string | undefined = undefined;
+        if (config.validation) {
+          res = await config.validation(input);
+        }
+
+        if (!res && !!config.additionalValidationOnAccept) {
+          res = await config.additionalValidationOnAccept(input);
+        }
+
+        return res;
+      };
+    }
     return new Promise(async (resolve) => {
       const result = await this.input(
         config.name,
         !!config.password,
         config.title,
         config.default as string,
-        this.toValidationFunc(config.validation)
+        this.toValidationFunc(validationFunc)
       );
       if (result.isOk()) {
         resolve(ok({ type: "success", result: result.value }));
@@ -563,6 +588,26 @@ class CLIUserInteraction implements UserInteraction {
     });
   }
 
+  public async selectFileOrInput(
+    config: SingleFileOrInputConfig
+  ): Promise<Result<InputTextResult, FxError>> {
+    const loadRes = await this.loadDefaultValue(config.inputBoxConfig);
+    if (loadRes.isErr()) return err(loadRes.error);
+    const validationFuncForInput = config.inputBoxConfig.validation;
+    const validationFunc = async (input: string) => {
+      const checkLocalPathRes = await pathValidation(input);
+      if (checkLocalPathRes) {
+        if (validationFuncForInput) {
+          return await validationFuncForInput(input);
+        } else {
+          return checkLocalPathRes;
+        }
+      } else {
+        return undefined;
+      }
+    };
+    return this.inputText({ ...config.inputBoxConfig, validation: validationFunc });
+  }
   public async selectFile(config: SelectFileConfig): Promise<Result<SelectFileResult, FxError>> {
     const loadRes = await this.loadDefaultValue(config);
     if (loadRes.isErr()) {
@@ -576,7 +621,6 @@ class CLIUserInteraction implements UserInteraction {
     };
     return this.inputText(newConfig);
   }
-
   public async selectFiles(config: SelectFilesConfig): Promise<Result<SelectFilesResult, FxError>> {
     const loadRes = await this.loadDefaultValue(config);
     if (loadRes.isErr()) {

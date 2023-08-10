@@ -14,7 +14,7 @@ import {
   TeamsAppManifestFilePathName,
   TeamsAppManifestOptions,
 } from "../constants";
-import { MissingRequiredArgumentError } from "../error";
+import { MissingRequiredOptionError } from "../error";
 import CliTelemetry, { makeEnvRelatedProperty } from "../telemetry/cliTelemetry";
 import {
   TelemetryEvent,
@@ -24,12 +24,14 @@ import {
 import CLIUIInstance from "../userInteraction";
 import { getSystemInputs } from "../utils";
 import { YargsCommand } from "../yargsCommand";
+import { globals } from "../globals";
 export class UpdateAadApp extends YargsCommand {
   public readonly commandHead = "aad-app";
   public readonly command = this.commandHead;
   public readonly description = "Update the AAD App in the current application.";
 
   public builder(yargs: Argv): Argv<any> {
+    globals.options = ["manifest-file-path", "env"];
     return yargs
       .options(EnvOptions)
       .options(RootFolderOptions)
@@ -51,7 +53,7 @@ export class UpdateAadApp extends YargsCommand {
     inputs.ignoreEnvInfo = false;
     // Throw error if --env not specified
     if (!args.env && !CLIUIInstance.interactive) {
-      const error = new MissingRequiredArgumentError("teamsfx aad-app", "env");
+      const error = new MissingRequiredOptionError("teamsfx aad-app", "env");
       CliTelemetry.sendTelemetryErrorEvent(TelemetryEvent.UpdateAadApp, error);
       return err(error);
     }
@@ -104,7 +106,7 @@ export class UpdateTeamsApp extends YargsCommand {
     inputs[CoreQuestionNames.TeamsAppManifestFilePath] = args[TeamsAppManifestFilePathName];
     // Throw error if --env not specified
     if (!args.env && !CLIUIInstance.interactive) {
-      const error = new MissingRequiredArgumentError("teamsfx teams-app", "env");
+      const error = new MissingRequiredOptionError("teamsfx teams-app", "env");
       CliTelemetry.sendTelemetryErrorEvent(TelemetryEvent.UpdateTeamsApp, error);
       return err(error);
     }

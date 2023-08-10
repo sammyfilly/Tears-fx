@@ -1,3 +1,5 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
 /**
  * @author Frank Qian <frankqian@microsoft.com>
  */
@@ -17,7 +19,10 @@ import {
   upgradeByTreeView,
   validateUpgrade,
 } from "../../../utils/vscodeOperation";
-import { CLIVersionCheck } from "../../../utils/commonUtils";
+import {
+  CLIVersionCheck,
+  updateFunctionAuthorizationPolicy,
+} from "../../../utils/commonUtils";
 
 describe("Migration Tests", function () {
   this.timeout(Timeout.testAzureCase);
@@ -47,13 +52,17 @@ describe("Migration Tests", function () {
     },
     async () => {
       // create v2 project using CLI
-      await mirgationDebugTestContext.createProjectCLI(false);
+      const projectPath = await mirgationDebugTestContext.createProjectCLI(
+        false
+      );
       // verify popup
       await validateNotification(Notification.Upgrade);
 
       // add feature
       await mirgationDebugTestContext.addFeatureV2(ResourceToDeploy.Bot);
       await mirgationDebugTestContext.addFeatureV2(ResourceToDeploy.Function);
+
+      await updateFunctionAuthorizationPolicy("3.2.0", projectPath);
 
       // v2 provision
       await mirgationDebugTestContext.provisionWithCLI("dev", false);
@@ -86,7 +95,10 @@ describe("Migration Tests", function () {
         Env.username,
         Env.password
       );
-      await validateTab(page, Env.displayName, false);
+      await validateTab(page, {
+        displayName: Env.displayName,
+        includeFunction: false,
+      });
     }
   );
 });

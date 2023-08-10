@@ -13,7 +13,7 @@ import * as constants from "../../../src/constants";
 import { TelemetryEvent } from "../../../src/telemetry/cliTelemetryEvents";
 import CLIUIInstance from "../../../src/userInteraction";
 import { expect, mockTelemetry, mockYargs } from "../utils";
-import { MissingRequiredArgumentError } from "../../../src/error";
+import { MissingRequiredArgumentError, MissingRequiredOptionError } from "../../../src/error";
 
 describe("teamsfx validate", () => {
   const sandbox = sinon.createSandbox();
@@ -90,5 +90,18 @@ describe("teamsfx validate", () => {
     if (res.isErr()) {
       expect(res.error instanceof MissingRequiredArgumentError).to.be.true;
     }
+  });
+
+  it("Validate Command Running Check - manifest with all inputs", async () => {
+    sandbox.stub(FxCore.prototype, "validateApplication").resolves(ok(new Map()));
+    const cmd = new ManifestValidate();
+    const args = {
+      [constants.ManifestFilePathParamName]: "./manifest.json",
+      env: "dev",
+      folder: "./",
+    };
+    CLIUIInstance.interactive = false;
+    const res = await cmd.runCommand(args);
+    expect(res.isOk()).equals(true);
   });
 });

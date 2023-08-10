@@ -18,6 +18,9 @@
     "package": "rimraf lib && node --max-old-space-size=4096 node_modules/webpack/bin/webpack.js --mode production --config ./webpack.config.js",
     "prepack": "npm run package",
     "test:unit": "nyc --no-clean mocha \"tests/unit/**/*.tests.ts\" ",
+    "test:helper": "nyc --no-clean mocha \"tests/unit/helper.tests.ts\" ",
+    "test:engine": "nyc --no-clean mocha \"tests/unit/engine.tests.ts\" ",
+    "test:commands": "nyc --no-clean mocha \"tests/unit/commands.tests.ts\" ",
     "check-format": "prettier --list-different --config .prettierrc.json --ignore-path .prettierignore \"{src,tests}/**/*.ts\" \"*.{js,json}\"",
     "format": "prettier --write --config .prettierrc.json --ignore-path .prettierignore \"{src,tests}/**/*.ts\" \"*.{js,json}\"",
     "lint:fix": "eslint \"src/**/*.ts\" \"tests/**/*.ts\" --fix",
@@ -38,7 +41,6 @@
   "aiKey": "1c56be97-bb74-42cf-b04b-8f1aabf04592",
   "devDependencies": {
     "@istanbuljs/nyc-config-typescript": "^1.0.1",
-    "@microsoft/eslint-plugin-teamsfx": "^0.0.4",
     "@microsoft/metrics-ts": "0.0.4",
     "@types/chai": "^4.2.14",
     "@types/chai-as-promised": "^7.1.3",

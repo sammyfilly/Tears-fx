@@ -2,7 +2,9 @@
 // Licensed under the MIT license.
 
 import {
+  ApiOperation,
   Colors,
+  CreateProjectResult,
   FxError,
   Inputs,
   InputTextConfig,
@@ -70,12 +72,15 @@ export interface IServerConnection {
   createProjectRequest: (
     inputs: Inputs,
     token: CancellationToken
-  ) => Promise<Result<string, FxError>>;
-  localDebugRequest: (inputs: Inputs, token: CancellationToken) => Promise<Result<Void, FxError>>;
+  ) => Promise<Result<CreateProjectResult, FxError>>;
+  localDebugRequest: (
+    inputs: Inputs,
+    token: CancellationToken
+  ) => Promise<Result<undefined, FxError>>;
   provisionResourcesRequest: (
     inputs: Inputs,
     token: CancellationToken
-  ) => Promise<Result<Void, FxError>>;
+  ) => Promise<Result<undefined, FxError>>;
   preProvisionResourcesRequest: (
     inputs: Inputs,
     token: CancellationToken
@@ -93,23 +98,23 @@ export interface IServerConnection {
   preCheckYmlAndEnvForVSRequest(
     inputs: Inputs,
     token: CancellationToken
-  ): Promise<Result<Void, FxError>>;
+  ): Promise<Result<undefined, FxError>>;
   validateManifestForVSRequest(
     inputs: Inputs,
     token: CancellationToken
-  ): Promise<Result<Void, FxError>>;
+  ): Promise<Result<undefined, FxError>>;
   deployArtifactsRequest: (
     inputs: Inputs,
     token: CancellationToken
-  ) => Promise<Result<Void, FxError>>;
+  ) => Promise<Result<undefined, FxError>>;
   buildArtifactsRequest: (
     inputs: Inputs,
     token: CancellationToken
-  ) => Promise<Result<Void, FxError>>;
+  ) => Promise<Result<undefined, FxError>>;
   publishApplicationRequest: (
     inputs: Inputs,
     token: CancellationToken
-  ) => Promise<Result<Void, FxError>>;
+  ) => Promise<Result<undefined, FxError>>;
   deployTeamsAppManifestRequest: (
     inputs: Inputs,
     token: CancellationToken
@@ -123,19 +128,19 @@ export interface IServerConnection {
     funcId: number,
     inputs: Inputs,
     token: CancellationToken
-  ) => Promise<Result<Void, FxError>>;
+  ) => Promise<Result<undefined, FxError>>;
   customizeValidateFuncRequest: (
     funcId: number,
     answer: any,
     previousAnswers: Inputs | undefined,
     token: CancellationToken
-  ) => Promise<Result<Void, FxError>>;
+  ) => Promise<Result<undefined, FxError>>;
   customizeOnSelectionChangeFuncRequest: (
     funcId: number,
     currentSelectedIds: Set<string>,
     previousSelectedIds: Set<string>,
     token: CancellationToken
-  ) => Promise<Result<Void, FxError>>;
+  ) => Promise<Result<undefined, FxError>>;
   addSsoRequest: (inputs: Inputs, token: CancellationToken) => Promise<Result<any, FxError>>;
 
   getProjectMigrationStatusRequest: (
@@ -149,17 +154,21 @@ export interface IServerConnection {
   publishInDeveloperPortalRequest: (
     inputs: Inputs,
     token: CancellationToken
-  ) => Promise<Result<Void, FxError>>;
+  ) => Promise<Result<undefined, FxError>>;
   setRegionRequest: (
     accountToken: {
       token: string;
     },
     token: CancellationToken
-  ) => Promise<Result<Void, FxError>>;
+  ) => Promise<Result<undefined, FxError>>;
   listDevTunnelsRequest: (
     inputs: Inputs,
     token: CancellationToken
   ) => Promise<Result<Tunnel[], FxError>>;
+  copilotPluginAddAPIRequest: (
+    inputs: Inputs,
+    token: CancellationToken
+  ) => Promise<Result<undefined, FxError>>;
   loadOpenAIPluginManifestRequest: (
     inputs: Inputs,
     token: CancellationToken
@@ -167,7 +176,7 @@ export interface IServerConnection {
   listOpenAPISpecOperationsRequest: (
     inputs: Inputs,
     token: CancellationToken
-  ) => Promise<Result<string[], FxError>>;
+  ) => Promise<Result<ApiOperation[], FxError>>;
 }
 
 /**

@@ -3,7 +3,9 @@
 
 import { hooks } from "@feathersjs/hooks";
 import {
+  ApiOperation,
   CoreCallbackEvent,
+  CreateProjectResult,
   CryptoProvider,
   err,
   Func,
@@ -16,7 +18,6 @@ import {
   Result,
   Stage,
   Tools,
-  Void,
 } from "@microsoft/teamsfx-api";
 import { DotenvParseOutput } from "dotenv";
 import * as path from "path";
@@ -24,12 +25,11 @@ import "reflect-metadata";
 import { TelemetryReporterInstance } from "../common/telemetry";
 import { ILifecycle, LifecycleName } from "../component/configManager/interface";
 import { YamlParser } from "../component/configManager/parser";
-import { validateSchemaOption } from "../component/constants";
 import "../component/driver/index";
 import { DriverContext } from "../component/driver/interface/commonArgs";
 import "../component/driver/script/scriptDriver";
+import { ErrorResult } from "../component/generator/copilotPlugin/helper";
 import { EnvLoaderMW } from "../component/middleware/envMW";
-import { QuestionMW } from "../component/middleware/questionMW";
 import { envUtil } from "../component/utils/envUtil";
 import { metadataUtil } from "../component/utils/metadataUtil";
 import { pathUtils } from "../component/utils/pathUtils";
@@ -43,11 +43,9 @@ import { FxCoreV3Implement } from "./FxCoreImplementV3";
 import { setTools, TOOLS } from "./globalVars";
 import { ErrorHandlerMW } from "./middleware/errorHandler";
 import { PreProvisionResForVS, VersionCheckRes } from "./types";
-import { QuestionNames } from "../question/questionNames";
-import { questions } from "../question";
-import { ErrorResult } from "../component/generator/copilotPlugin/helper";
+import { ListCollaboratorResult, PermissionsResult } from "../common/permissionInterface";
 
-export type CoreCallbackFunc = (name: string, err?: FxError, data?: any) => void;
+export type CoreCallbackFunc = (name: string, err?: FxError, data?: any) => void | Promise<void>;
 
 export class FxCore {
   tools: Tools;
@@ -73,25 +71,32 @@ export class FxCore {
   /**
    * lifecycle command: create new project
    */
-  async createProject(inputs: Inputs): Promise<Result<string, FxError>> {
+  async createProject(inputs: Inputs): Promise<Result<CreateProjectResult, FxError>> {
     return this.v3Implement.dispatch(this.createProject, inputs);
+  }
+
+  /**
+   * lifecycle command: create new sample project
+   */
+  async createSampleProject(inputs: Inputs): Promise<Result<CreateProjectResult, FxError>> {
+    return this.v3Implement.dispatch(this.createSampleProject, inputs);
   }
 
   /**
    * lifecycle commands: provision
    */
-  async provisionResources(inputs: Inputs): Promise<Result<Void, FxError>> {
+  async provisionResources(inputs: Inputs): Promise<Result<undefined, FxError>> {
     return this.v3Implement.dispatch(this.provisionResources, inputs);
   }
 
   /**
    * lifecycle commands: deploy
    */
-  async deployArtifacts(inputs: Inputs): Promise<Result<Void, FxError>> {
+  async deployArtifacts(inputs: Inputs): Promise<Result<undefined, FxError>> {
     return this.v3Implement.dispatch(this.deployArtifacts, inputs);
   }
 
-  async localDebug(inputs: Inputs): Promise<Result<Void, FxError>> {
+  async localDebug(inputs: Inputs): Promise<Result<undefined, FxError>> {
     inputs.env = environmentManager.getLocalEnvName();
     return this.provisionResources(inputs);
   }
@@ -99,21 +104,21 @@ export class FxCore {
   /**
    * none lifecycle command, v3 only
    */
-  async deployAadManifest(inputs: Inputs): Promise<Result<Void, FxError>> {
+  async deployAadManifest(inputs: Inputs): Promise<Result<undefined, FxError>> {
     return this.v3Implement.dispatch(this.deployAadManifest, inputs);
   }
 
   /**
    * none lifecycle command, v3 only
    */
-  async addWebpart(inputs: Inputs): Promise<Result<Void, FxError>> {
+  async addWebpart(inputs: Inputs): Promise<Result<undefined, FxError>> {
     return this.v3Implement.dispatch(this.addWebpart, inputs);
   }
 
   /**
    * lifecycle command: publish
    */
-  async publishApplication(inputs: Inputs): Promise<Result<Void, FxError>> {
+  async publishApplication(inputs: Inputs): Promise<Result<undefined, FxError>> {
     return this.v3Implement.dispatch(this.publishApplication, inputs);
   }
 
@@ -127,44 +132,39 @@ export class FxCore {
   /**
    * v3 only none lifecycle command
    */
-  async buildAadManifest(inputs: Inputs): Promise<Result<Void, FxError>> {
+  async buildAadManifest(inputs: Inputs): Promise<Result<undefined, FxError>> {
     return this.v3Implement.dispatch(this.buildAadManifest, inputs);
   }
 
   /**
    * v3 only none lifecycle command
    */
-  async deployTeamsManifest(inputs: Inputs): Promise<Result<Void, FxError>> {
+  async deployTeamsManifest(inputs: Inputs): Promise<Result<undefined, FxError>> {
     return this.v3Implement.dispatch(this.deployTeamsManifest, inputs);
   }
 
   /**
    * v3 only none lifecycle command
    */
-  @hooks([QuestionMW(questions.selectTeamsAppValidationMethod)])
-  async validateApplication(inputs: Inputs): Promise<Result<Void, FxError>> {
-    if (inputs[QuestionNames.ValidateMethod] === validateSchemaOption.id) {
-      return await this.validateManifest(inputs);
-    } else {
-      return await this.validateAppPackage(inputs);
-    }
+  async validateApplication(inputs: Inputs): Promise<Result<any, FxError>> {
+    return this.v3Implement.dispatch(this.validateApplication, inputs);
   }
   /**
    * v3 only none lifecycle command
    */
-  async validateManifest(inputs: Inputs): Promise<Result<Void, FxError>> {
+  async validateManifest(inputs: Inputs): Promise<Result<any, FxError>> {
     return this.v3Implement.dispatch(this.validateManifest, inputs);
   }
   /**
    * v3 only none lifecycle command
    */
-  async validateAppPackage(inputs: Inputs): Promise<Result<Void, FxError>> {
+  async validateAppPackage(inputs: Inputs): Promise<Result<any, FxError>> {
     return this.v3Implement.dispatch(this.validateAppPackage, inputs);
   }
   /**
    * v3 only none lifecycle command
    */
-  async createAppPackage(inputs: Inputs): Promise<Result<Void, FxError>> {
+  async createAppPackage(inputs: Inputs): Promise<Result<any, FxError>> {
     return this.v3Implement.dispatch(this.createAppPackage, inputs);
   }
 
@@ -246,7 +246,7 @@ export class FxCore {
         (d: any) => d.uses === "teamsApp/create"
       );
       if (teamsAppCreate) {
-        const name = (teamsAppCreate.with as any).name;
+        const name = teamsAppCreate.with.name;
         if (name) {
           return ok(name.replace("-${{TEAMSFX_ENV}}", "") || "");
         }
@@ -313,21 +313,21 @@ export class FxCore {
     return ok(res);
   }
 
-  async grantPermission(inputs: Inputs): Promise<Result<Void, FxError>> {
+  async grantPermission(inputs: Inputs): Promise<Result<PermissionsResult, FxError>> {
     return this.v3Implement.dispatch(this.grantPermission, inputs);
   }
 
   /**
    * none lifecycle command
    */
-  async checkPermission(inputs: Inputs): Promise<Result<Void, FxError>> {
+  async checkPermission(inputs: Inputs): Promise<Result<PermissionsResult, FxError>> {
     return this.v3Implement.dispatch(this.checkPermission, inputs);
   }
 
   /**
    * none lifecycle command
    */
-  async listCollaborator(inputs: Inputs): Promise<Result<Void, FxError>> {
+  async listCollaborator(inputs: Inputs): Promise<Result<ListCollaboratorResult, FxError>> {
     return this.v3Implement.dispatch(this.listCollaborator, inputs);
   }
 
@@ -369,12 +369,12 @@ export class FxCore {
     return res.value.decrypt(ciphertext);
   }
 
-  async createEnv(inputs: Inputs): Promise<Result<Void, FxError>> {
+  async createEnv(inputs: Inputs): Promise<Result<undefined, FxError>> {
     return this.v3Implement.dispatch(this.createEnv, inputs);
   }
 
   // a phantom migration method for V3
-  async phantomMigrationV3(inputs: Inputs): Promise<Result<Void, FxError>> {
+  async phantomMigrationV3(inputs: Inputs): Promise<Result<undefined, FxError>> {
     return this.v3Implement.dispatch(this.phantomMigrationV3, inputs);
   }
 
@@ -387,7 +387,7 @@ export class FxCore {
     inputs: Inputs,
     templatePath: string,
     lifecycleName: string
-  ): Promise<Result<Void, FxError>> {
+  ): Promise<Result<undefined, FxError>> {
     if (!inputs.projectPath) {
       return err(InvalidInputError("invalid projectPath", inputs));
     }
@@ -410,8 +410,8 @@ export class FxCore {
 
     const projectModel = maybeProjectModel.value;
     const driverContext: DriverContext = {
-      azureAccountProvider: TOOLS.tokenProvider.azureAccountProvider!,
-      m365TokenProvider: TOOLS.tokenProvider.m365TokenProvider!,
+      azureAccountProvider: TOOLS.tokenProvider.azureAccountProvider,
+      m365TokenProvider: TOOLS.tokenProvider.m365TokenProvider,
       ui: TOOLS.ui,
       progressBar: undefined,
       logProvider: TOOLS.logProvider,
@@ -424,7 +424,7 @@ export class FxCore {
       return this.runLifecycle(lifecycle, driverContext, env);
     } else {
       await driverContext.logProvider.warning(`No definition found for ${lifecycleName}`);
-      return ok(Void);
+      return ok(undefined);
     }
   }
 
@@ -432,7 +432,7 @@ export class FxCore {
     lifecycle: ILifecycle,
     driverContext: DriverContext,
     env: string
-  ): Promise<Result<Void, FxError>> {
+  ): Promise<Result<undefined, FxError>> {
     const r = await lifecycle.execute(driverContext);
     const runResult = r.result;
     if (runResult.isOk()) {
@@ -442,7 +442,7 @@ export class FxCore {
         env,
         envUtil.map2object(runResult.value)
       );
-      return writeResult.map(() => Void);
+      return writeResult.map(() => undefined);
     } else {
       const error = runResult.error;
       if (error.kind === "Failure") {
@@ -458,7 +458,7 @@ export class FxCore {
             await driverContext.logProvider.warning(
               `Unresolved placeholders: ${unresolved.join(",")} for driver ${failedDriver.uses}`
             );
-            return ok(Void);
+            return ok(undefined);
           } else {
             await driverContext.logProvider.error(
               `Failed to run ${lifecycle.name} due to ${error.reason.error.name}: ${error.reason.error.message}. Failed driver: ${failedDriver.uses}`
@@ -476,15 +476,15 @@ export class FxCore {
     return this.v3Implement.dispatch(this.preProvisionForVS, inputs);
   }
 
-  async preCheckYmlAndEnvForVS(inputs: Inputs): Promise<Result<Void, FxError>> {
+  async preCheckYmlAndEnvForVS(inputs: Inputs): Promise<Result<undefined, FxError>> {
     return this.v3Implement.dispatch(this.preCheckYmlAndEnvForVS, inputs);
   }
 
-  async publishInDeveloperPortal(inputs: Inputs): Promise<Result<Void, FxError>> {
+  async publishInDeveloperPortal(inputs: Inputs): Promise<Result<undefined, FxError>> {
     return this.v3Implement.dispatch(this.publishInDeveloperPortal, inputs);
   }
 
-  async copilotPluginAddAPI(inputs: Inputs): Promise<Result<Void, FxError>> {
+  async copilotPluginAddAPI(inputs: Inputs): Promise<Result<undefined, FxError>> {
     return this.v3Implement.dispatch(this.copilotPluginAddAPI, inputs);
   }
 
@@ -494,7 +494,9 @@ export class FxCore {
     return this.v3Implement.dispatch(this.copilotPluginLoadOpenAIManifest, inputs);
   }
 
-  async copilotPluginListOperations(inputs: Inputs): Promise<Result<string[], ErrorResult[]>> {
+  async copilotPluginListOperations(
+    inputs: Inputs
+  ): Promise<Result<ApiOperation[], ErrorResult[]>> {
     return this.v3Implement.dispatch(this.copilotPluginListOperations, inputs);
   }
 }
