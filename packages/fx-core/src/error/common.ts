@@ -289,7 +289,7 @@ export function assembleError(e: any, source?: string): FxError {
     return new UnhandledError(new Error(e as string), source);
   } else {
     const code = e.code as string;
-    if (code && (errnoCodes[code] || code.startsWith("ERR_"))) {
+    if (code && (ErrnoCodes[code] || code.startsWith("ERR_"))) {
       // convert to internal error
       return new InternalError(e, source);
     }
@@ -297,7 +297,7 @@ export function assembleError(e: any, source?: string): FxError {
   }
 }
 
-const errnoCodes: Record<string, string> = {
+export const ErrnoCodes: Record<string, string> = {
   E2BIG: "Argument list too long",
   EACCES: "Permission denied",
   EADDRINUSE: "Address already in use",
