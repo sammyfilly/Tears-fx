@@ -595,7 +595,7 @@ class CLIUserInteraction implements UserInteraction {
     if (loadRes.isErr()) return err(loadRes.error);
     const validationFuncForInput = config.inputBoxConfig.validation;
     const validationFunc = async (input: string) => {
-      const checkLocalPathRes = await pathValidation(input);
+      const checkLocalPathRes = pathValidation(input);
       if (checkLocalPathRes) {
         if (validationFuncForInput) {
           return await validationFuncForInput(input);
@@ -632,7 +632,7 @@ class CLIUserInteraction implements UserInteraction {
         return config.validation(strings);
       } else {
         for (const s of strings) {
-          const result = await pathValidation(s);
+          const result = pathValidation(s);
           if (result !== undefined) {
             return result;
           }
@@ -759,7 +759,7 @@ class CLIUserInteraction implements UserInteraction {
   }
 }
 
-async function pathValidation(p: string): Promise<string | undefined> {
+function pathValidation(p: string): string | undefined {
   if (p === "") {
     return "Path cannot be empty.";
   }
