@@ -34,6 +34,7 @@ import { StaticTab } from "../component/driver/teamsApp/interfaces/appdefinition
 import { isPersonalApp, needBotCode } from "../component/driver/teamsApp/utils/utils";
 import {
   OpenAIPluginManifestHelper,
+  convertSpecParserErrorToFxError,
   listOperations,
 } from "../component/generator/copilotPlugin/helper";
 import projectsJsonData from "../component/generator/officeAddin/config/projectsJsonData";
@@ -50,6 +51,9 @@ import {
   copilotPluginExistingApiOptionIds,
   copilotPluginOpenAIPluginOptionId,
 } from "./constants";
+import { QualifiedName } from "ts-morph";
+import { SpecParserError } from "../common/spec-parser/specParserError";
+import { ErrorType } from "../common/spec-parser/interfaces";
 
 export class ScratchOptions {
   static yes(): OptionItem {
@@ -1344,7 +1348,7 @@ export function apiSpecLocationQuestion(includeExistingAPIs = true): SingleFileO
             : getLocalizedString("core.createProjectQuestion.invalidUrl.message");
         },
       },
-      additionalValidationOnAccept: { validFunc: validationOnAccept },
+      // additionalValidationOnAccept: { validFunc: validationOnAccept },
     },
     inputOptionItem: {
       id: "input",
@@ -1455,8 +1459,31 @@ export function apiOperationQuestion(includeExistingAPIs = true): MultiSelectQue
       minItems: 1,
     },
     dynamicOptions: async (inputs: Inputs): Promise<OptionItem[]> => {
-      if (!inputs.supportedApisFromApiSpec) {
-        throw new EmptyOptionError(QuestionNames.ApiOperation, "question");
+      // if (!inputs.supportedApisFromApiSpec) {
+      //   throw new EmptyOptionError(QuestionNames.ApiOperation, "question");
+      // }
+
+      try {
+        const context = createContextV3();
+        const res = await listOperations(
+          context,
+          undefined,
+          inputs[QuestionNames.ApiSpecLocation],
+          undefined,
+          includeExistingAPIs,
+          false
+        );
+        if (res.isOk()) {
+          inputs!.supportedApisFromApiSpec = res.value;
+        } else {
+          const errors = res.error;
+          throw convertSpecParserErrorToFxError(
+            new SpecParserError("invalid api spec", ErrorType.SpecNotValid)
+          );
+        }
+      } catch (e) {
+        const error = assembleError(e);
+        throw error;
       }
 
       const operations = inputs.supportedApisFromApiSpec;
