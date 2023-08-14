@@ -606,7 +606,7 @@ class CLIUserInteraction implements UserInteraction {
         return undefined;
       }
     };
-    return this.inputText({ ...config.inputBoxConfig, validation: undefined });
+    return this.inputText({ ...config.inputBoxConfig, validation: validationFunc });
   }
   public async selectFile(config: SelectFileConfig): Promise<Result<SelectFileResult, FxError>> {
     const loadRes = await this.loadDefaultValue(config);
@@ -763,7 +763,7 @@ async function pathValidation(p: string): Promise<string | undefined> {
   if (p === "") {
     return "Path cannot be empty.";
   }
-  if (await fs.pathExists(path.resolve(p))) {
+  if (fs.pathExistsSync(path.resolve(p))) {
     return undefined;
   } else {
     return `${path.resolve(p)} does not exist.`;

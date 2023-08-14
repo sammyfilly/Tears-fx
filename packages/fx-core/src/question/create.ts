@@ -1289,6 +1289,10 @@ export function apiSpecLocationQuestion(includeExistingAPIs = true): SingleFileO
     input: string,
     inputs?: Inputs
   ): Promise<string | undefined> => {
+    if (inputs?.platform === Platform.CLI) {
+      // skip validatin
+      return undefined;
+    }
     try {
       const context = createContextV3();
       const res = await listOperations(
@@ -1303,9 +1307,6 @@ export function apiSpecLocationQuestion(includeExistingAPIs = true): SingleFileO
         inputs!.supportedApisFromApiSpec = res.value;
       } else {
         const errors = res.error;
-        if (inputs?.platform === Platform.CLI) {
-          return errors.map((e) => e.content).join("\n");
-        }
         if (
           errors.length === 1 &&
           errors[0].content.length <= maximumLengthOfDetailsErrorMessageInInputBox
@@ -1348,7 +1349,7 @@ export function apiSpecLocationQuestion(includeExistingAPIs = true): SingleFileO
             : getLocalizedString("core.createProjectQuestion.invalidUrl.message");
         },
       },
-      // additionalValidationOnAccept: { validFunc: validationOnAccept },
+      additionalValidationOnAccept: { validFunc: validationOnAccept },
     },
     inputOptionItem: {
       id: "input",
