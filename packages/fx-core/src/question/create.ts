@@ -1392,6 +1392,10 @@ export function openAIPluginManifestLocationQuestion(): TextInputQuestion {
     },
     additionalValidationOnAccept: {
       validFunc: async (input: string, inputs?: Inputs): Promise<string | undefined> => {
+        if (inputs?.platform === Platform.CLI) {
+          return undefined;
+        }
+
         let manifest;
 
         try {
@@ -1416,9 +1420,6 @@ export function openAIPluginManifestLocationQuestion(): TextInputQuestion {
             inputs!.supportedApisFromApiSpec = res.value;
           } else {
             const errors = res.error;
-            if (inputs?.platform === Platform.CLI) {
-              return errors.map((e) => e.content).join("\n");
-            }
             if (
               errors.length === 1 &&
               errors[0].content.length <= maximumLengthOfDetailsErrorMessageInInputBox
@@ -1464,27 +1465,39 @@ export function apiOperationQuestion(includeExistingAPIs = true): MultiSelectQue
       //   throw new EmptyOptionError(QuestionNames.ApiOperation, "question");
       // }
 
-      try {
-        const context = createContextV3();
-        const res = await listOperations(
-          context,
-          undefined,
-          inputs[QuestionNames.ApiSpecLocation],
-          undefined,
-          includeExistingAPIs,
-          false
-        );
-        if (res.isOk()) {
-          inputs!.supportedApisFromApiSpec = res.value;
-        } else {
-          const errors = res.error;
-          throw convertSpecParserErrorToFxError(
-            new SpecParserError("invalid api spec", ErrorType.SpecNotValid)
+      if (inputs.platform === Platform.CLI) {
+        try {
+          const context = createContextV3();
+
+          let manifest;
+          if (inputs[QuestionNames.OpenAIPluginManifestLocation]) {
+            manifest = await OpenAIPluginManifestHelper.loadOpenAIPluginManifest(
+              inputs[QuestionNames.OpenAIPluginManifestLocation]
+            );
+            inputs!.openAIPluginManifest = manifest;
+          }
+          const res = await listOperations(
+            context,
+            manifest,
+            inputs[QuestionNames.ApiSpecLocation],
+            undefined,
+            includeExistingAPIs,
+            false
           );
+          if (res.isOk()) {
+            inputs!.supportedApisFromApiSpec = res.value;
+          } else {
+            const errors = res.error;
+            throw convertSpecParserErrorToFxError(
+              new SpecParserError(errors[0].content, ErrorType.SpecNotValid)
+            );
+          }
+        } catch (e) {
+          const error = assembleError(e);
+          throw error;
         }
-      } catch (e) {
-        const error = assembleError(e);
-        throw error;
+      } else {
+        throw new EmptyOptionError(QuestionNames.ApiOperation, "question");
       }
 
       const operations = inputs.supportedApisFromApiSpec;
