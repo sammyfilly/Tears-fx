@@ -1,6 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+/* eslint-disable @typescript-eslint/no-floating-promises */
+
 /**
  * @author Huajie Zhang <zhjay23@qq.com>
  */
@@ -130,6 +132,7 @@ import {
 } from "./utils/commonUtils";
 import { getDefaultString, localize, parseLocale } from "./utils/localizeUtils";
 import { ExtensionSurvey } from "./utils/survey";
+import { MetadataV3 } from "@microsoft/teamsfx-core";
 
 export let core: FxCore;
 export let tools: Tools;
@@ -790,7 +793,7 @@ export async function downloadSample(inputs: Inputs): Promise<Result<any, FxErro
     if (tmpResult.isErr()) {
       result = err(tmpResult.error);
     } else {
-      const uri = Uri.file((tmpResult.value as CreateProjectResult).projectPath);
+      const uri = Uri.file(tmpResult.value.projectPath);
       result = ok(uri);
     }
   } catch (e) {
@@ -1744,7 +1747,7 @@ export async function showError(e: UserError | SystemError) {
     const helpLinkUrl = Uri.parse(`${e.helpLink}`);
     const help = {
       title: localize("teamstoolkit.handlers.getHelp"),
-      run: async (): Promise<void> => {
+      run: () => {
         ExtTelemetry.sendTelemetryEvent(TelemetryEvent.ClickGetHelp, {
           [TelemetryProperty.ErrorCode]: errorCode,
           [TelemetryProperty.ErrorMessage]: notificationMessage,
@@ -1757,9 +1760,9 @@ export async function showError(e: UserError | SystemError) {
       `code:${e.source}.${e.name}, message: ${e.message}\n Help link: ${e.helpLink}`
     );
     const button = await window.showErrorMessage(`[${errorCode}]: ${notificationMessage}`, help);
-    if (button) await button.run();
+    if (button) button.run();
   } else if (e instanceof SystemError) {
-    const sysError = e as SystemError;
+    const sysError = e;
     const path = "https://github.com/OfficeDev/TeamsFx/issues/new?";
     const param = `title=bug+report: ${errorCode}&body=${anonymizeFilePaths(
       e.message
@@ -1769,7 +1772,7 @@ export async function showError(e: UserError | SystemError) {
     const issueLink = Uri.parse(`${path}${param}`);
     const issue = {
       title: localize("teamstoolkit.handlers.reportIssue"),
-      run: async (): Promise<void> => {
+      run: () => {
         commands.executeCommand("vscode.open", issueLink);
       },
     };
@@ -1783,13 +1786,14 @@ export async function showError(e: UserError | SystemError) {
         await commands.executeCommand("vscode.open", similarIssueLink);
       },
     };
+    // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
     VsCodeLogInstance.error(`code:${e.source}.${e.name}, message: ${e.message}\nstack: ${e.stack}`);
     const button = await window.showErrorMessage(
       `[${errorCode}]: ${notificationMessage}`,
       issue,
       similarIssues
     );
-    if (button) await button.run();
+    if (button) button.run();
   } else {
     if (!(e instanceof ConcurrentError))
       await window.showErrorMessage(`[${errorCode}]: ${notificationMessage}`);
@@ -2146,9 +2150,7 @@ export function editAadManifestTemplate(args: any[]) {
   );
   if (args && args.length > 1) {
     const workspacePath = globalVariables.workspaceUri?.fsPath;
-    const manifestPath = `${
-      workspacePath as string
-    }/${TemplateFolderName}/${AppPackageFolderName}/aad.template.json`;
+    const manifestPath = `${workspacePath as string}/${MetadataV3.aadManifestFileName}`;
     void workspace.openTextDocument(manifestPath).then((document) => {
       void window.showTextDocument(document);
     });
@@ -2256,7 +2258,7 @@ export async function migrateTeamsTabAppHandler(): Promise<Result<null, FxError>
         path.join(tabAppPath, "package.json")
       );
       VsCodeLogInstance.warning(warningMessage);
-      VS_CODE_UI.showMessage("warn", warningMessage, false, "OK");
+      void VS_CODE_UI.showMessage("warn", warningMessage, false, "OK");
     } else {
       // Update codes to use @microsoft/teams-js v2
       await progressBar.next(localize("teamstoolkit.migrateTeamsTabApp.updatingCodes"));
@@ -2274,7 +2276,7 @@ export async function migrateTeamsTabAppHandler(): Promise<Result<null, FxError>
               failedFiles.value.join(", ")
             )
           );
-          VS_CODE_UI.showMessage(
+          void VS_CODE_UI.showMessage(
             "warn",
             util.format(
               localize("teamstoolkit.migrateTeamsTabApp.updateCodesErrorMessage"),
@@ -2293,12 +2295,12 @@ export async function migrateTeamsTabAppHandler(): Promise<Result<null, FxError>
 
   if (result.isErr()) {
     await progressBar.end(false);
-    showError(result.error);
+    void showError(result.error);
     ExtTelemetry.sendTelemetryErrorEvent(TelemetryEvent.MigrateTeamsTabApp, result.error);
   } else {
     await progressBar.end(true);
     if (!packageUpdated.isErr() && packageUpdated.value) {
-      VS_CODE_UI.showMessage(
+      void VS_CODE_UI.showMessage(
         "info",
         util.format(localize("teamstoolkit.migrateTeamsTabApp.success"), tabAppPath),
         false
@@ -2366,11 +2368,11 @@ export async function migrateTeamsManifestHandler(): Promise<Result<null, FxErro
 
   if (result.isErr()) {
     await progressBar.end(false);
-    showError(result.error);
+    void showError(result.error);
     ExtTelemetry.sendTelemetryErrorEvent(TelemetryEvent.MigrateTeamsManifest, result.error);
   } else {
     await progressBar.end(true);
-    VS_CODE_UI.showMessage(
+    void VS_CODE_UI.showMessage(
       "info",
       util.format(localize("teamstoolkit.migrateTeamsManifest.success"), manifestPath),
       false

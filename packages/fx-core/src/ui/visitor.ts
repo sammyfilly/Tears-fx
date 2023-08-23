@@ -141,7 +141,9 @@ export const questionVisitor: QuestionTreeVisitor = async function (
         }
       }
     }
-    return err(new MissingRequiredInputError(question.name, "questionVisitor"));
+    if (question.required)
+      return err(new MissingRequiredInputError(question.name, "questionVisitor"));
+    else return ok({ type: "skip", result: undefined });
   }
 
   // interactive mode
@@ -158,7 +160,7 @@ export const questionVisitor: QuestionTreeVisitor = async function (
     if (question.default) {
       if (typeof question.default === "function") {
         defaultValue = async () => {
-          return (question as any).default(inputs);
+          return await (question as any).default(inputs);
         };
       } else {
         defaultValue = question.default;
@@ -290,9 +292,6 @@ export const questionVisitor: QuestionTreeVisitor = async function (
     const inputValidationFunc = question.inputBoxConfig.validation
       ? getValidationFunction<string>(question.inputBoxConfig.validation, inputs)
       : undefined;
-    const additionalValidationOnAcceptFunc = question.inputBoxConfig.additionalValidationOnAccept
-      ? getValidationFunction<string>(question.inputBoxConfig.additionalValidationOnAccept, inputs)
-      : undefined;
     const innerTitle = (await getCallFuncValue(inputs, question.inputBoxConfig.title)) as string;
     const innerPlaceholder = (await getCallFuncValue(
       inputs,
@@ -311,7 +310,7 @@ export const questionVisitor: QuestionTreeVisitor = async function (
         placeholder: innerPlaceholder,
         prompt: innerPrompt,
         validation: inputValidationFunc,
-        additionalValidationOnAccept: additionalValidationOnAcceptFunc,
+        step: question.inputBoxConfig.step,
       },
       filters: question.filters,
       step: step,

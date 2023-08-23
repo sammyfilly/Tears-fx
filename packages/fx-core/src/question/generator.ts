@@ -35,8 +35,8 @@ async function collectNodesForCliOptions(node: IQTreeNode, nodeList: IQTreeNode[
   }
   let currentOptions: string[] = [];
   if (node.data.type === "singleSelect" || node.data.type === "multiSelect") {
-    currentOptions = (node.data as SingleSelectQuestion | MultiSelectQuestion).staticOptions.map(
-      (option) => (typeof option === "string" ? option : option.id)
+    currentOptions = node.data.staticOptions.map((option) =>
+      typeof option === "string" ? option : option.id
     );
   }
   if (node.children && (!node.cliOptionDisabled || node.cliOptionDisabled !== "children")) {
@@ -70,8 +70,8 @@ async function collectNodesForInputs(node: IQTreeNode, nodeList: IQTreeNode[]) {
   }
   let currentOptions: string[] = [];
   if (node.data.type === "singleSelect" || node.data.type === "multiSelect") {
-    currentOptions = (node.data as SingleSelectQuestion | MultiSelectQuestion).staticOptions.map(
-      (option) => (typeof option === "string" ? option : option.id)
+    currentOptions = node.data.staticOptions.map((option) =>
+      typeof option === "string" ? option : option.id
     );
   }
   if (node.children && (!node.inputsDisabled || node.inputsDisabled !== "children")) {
@@ -177,7 +177,7 @@ export async function generateCliOptions(
   for (const node of cliNodeList) {
     const data = node.data as UserInputQuestion;
 
-    const questionName = data.name as string;
+    const questionName = data.name;
 
     const cliName = data.cliName || questionName;
 
@@ -328,7 +328,7 @@ export async function generateInputs(
   for (const node of inputsNodeList) {
     const data = node.data as UserInputQuestion;
 
-    const questionName = data.name as string;
+    const questionName = data.name;
 
     const cliName = data.cliName || questionName;
 
@@ -411,7 +411,7 @@ function getOptionType(question: UserInputQuestion): CLIOptionType {
 async function updateExports(filePath: string, exportStatement: string) {
   const project = new Project();
   try {
-    const sourceFile = await project.addSourceFileAtPathIfExists(filePath);
+    const sourceFile = project.addSourceFileAtPathIfExists(filePath);
     if (!sourceFile) return;
     const hasExport = sourceFile.getStatements().some((statement) => {
       return (
@@ -463,4 +463,4 @@ async function batchGenerate() {
   await generateInputs(questionNodes.deployAadManifest(), "DeployAadManifest");
 }
 
-batchGenerate();
+void batchGenerate();

@@ -13,7 +13,7 @@ import * as uuid from "uuid";
 import { getFxCore } from "../../activate";
 import { logger } from "../../commonlib/logger";
 import { TelemetryEvent, TelemetryProperty } from "../../telemetry/cliTelemetryEvents";
-
+import * as path from "path";
 export const createSampleCommand: CLICommand = {
   name: "sample",
   description: "Create an app from existing sample.",
@@ -36,7 +36,7 @@ export const createSampleCommand: CLICommand = {
     }
     logger.info(
       `Sample project '${chalk.white(inputs.samples)}' downloaded at: ${chalk.cyanBright(
-        res.value.projectPath
+        path.resolve(res.value.projectPath)
       )}`
     );
     return ok(undefined);

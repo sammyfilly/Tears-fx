@@ -6,6 +6,7 @@ import {
   ListCollaboratorResult,
   PackageService,
   PermissionsResult,
+  QuestionNames,
   UserCancelError,
   envUtil,
 } from "@microsoft/teamsfx-core";
@@ -24,7 +25,7 @@ import {
   addSPFxWebpartCommand,
   configGetCommand,
   configSetCommand,
-  createCommand,
+  getCreateCommand,
   createSampleCommand,
   deployCommand,
   envAddCommand,
@@ -54,9 +55,12 @@ import M365TokenProvider from "../../src/commonlib/m365Login";
 import { UserSettings } from "../../src/userSetttings";
 import * as utils from "../../src/utils";
 import { MissingRequiredOptionError } from "../../src/error";
+import mockedEnv, { RestoreFn } from "mocked-env";
 
 describe("CLI commands", () => {
   const sandbox = sinon.createSandbox();
+
+  let mockedEnvRestore: RestoreFn;
 
   beforeEach(() => {
     sandbox.stub(logger, "info").resolves(true);
@@ -65,33 +69,76 @@ describe("CLI commands", () => {
 
   afterEach(() => {
     sandbox.restore();
+    if (mockedEnvRestore) {
+      mockedEnvRestore();
+    }
   });
 
-  describe("createCommand", async () => {
+  describe("getCreateCommand", async () => {
     it("happy path", async () => {
+      mockedEnvRestore = mockedEnv({
+        COPILOT_PLUGIN: "false",
+      });
       sandbox.stub(activate, "getFxCore").returns(new FxCore({} as any));
       sandbox.stub(FxCore.prototype, "createProject").resolves(ok({ projectPath: "..." }));
+
       const ctx: CLIContext = {
-        command: { ...createCommand, fullName: "teamsfx new" },
+        command: { ...getCreateCommand(), fullName: "teamsfx new" },
         optionValues: {},
         globalOptionValues: {},
         argumentValues: [],
         telemetryProperties: {},
       };
-      const res = await createCommand.handler!(ctx);
+
+      const copilotPluginQuestionNames = [
+        QuestionNames.CopilotPluginDevelopment.toString(),
+        QuestionNames.ApiSpecLocation.toString(),
+        QuestionNames.OpenAIPluginDomain.toString(),
+        QuestionNames.ApiOperation.toString(),
+      ];
+      assert.isTrue(
+        ctx.command.options?.filter((o) => copilotPluginQuestionNames.includes(o.name)).length === 0
+      );
+      const res = await getCreateCommand().handler!(ctx);
+      assert.isTrue(res.isOk());
+    });
+
+    it("createProjectOptions - copilot plugin enabled", async () => {
+      mockedEnvRestore = mockedEnv({
+        COPILOT_PLUGIN: "true",
+      });
+      sandbox.stub(activate, "getFxCore").returns(new FxCore({} as any));
+      sandbox.stub(FxCore.prototype, "createProject").resolves(ok({ projectPath: "..." }));
+      const ctx: CLIContext = {
+        command: { ...getCreateCommand(), fullName: "teamsfx new" },
+        optionValues: {},
+        globalOptionValues: {},
+        argumentValues: [],
+        telemetryProperties: {},
+      };
+      const res = await getCreateCommand().handler!(ctx);
+      const copilotPluginQuestionNames = [
+        QuestionNames.CopilotPluginDevelopment.toString(),
+        QuestionNames.ApiSpecLocation.toString(),
+        QuestionNames.OpenAIPluginDomain.toString(),
+        QuestionNames.ApiOperation.toString(),
+      ];
+      assert.isTrue(
+        ctx.command.options?.filter((o) => copilotPluginQuestionNames.includes(o.name)).length === 4
+      );
       assert.isTrue(res.isOk());
     });
     it("core return error", async () => {
       sandbox.stub(activate, "getFxCore").returns(new FxCore({} as any));
       sandbox.stub(FxCore.prototype, "createProject").resolves(err(new UserCancelError()));
       const ctx: CLIContext = {
-        command: { ...createCommand, fullName: "teamsfx new" },
+        command: { ...getCreateCommand(), fullName: "teamsfx new" },
         optionValues: {},
         globalOptionValues: {},
         argumentValues: [],
         telemetryProperties: {},
       };
-      const res = await createCommand.handler!(ctx);
+      const res = await getCreateCommand().handler!(ctx);
       assert.isTrue(res.isErr());
     });
   });
@@ -318,6 +365,18 @@ describe("CLI commands", () => {
       const res = await provisionCommand.handler!(ctx);
       assert.isTrue(res.isOk());
     });
+    it("non interactive mode", async () => {
+      sandbox.stub(FxCore.prototype, "provisionResources").resolves(ok(undefined));
+      const ctx: CLIContext = {
+        command: { ...provisionCommand, fullName: "teamsfx" },
+        optionValues: { nonInteractive: true, region: "East US" },
+        globalOptionValues: {},
+        argumentValues: [],
+        telemetryProperties: {},
+      };
+      const res = await provisionCommand.handler!(ctx);
+      assert.isTrue(res.isOk());
+    });
   });
   describe("packageCommand", async () => {
     it("success", async () => {
@@ -334,19 +393,47 @@ describe("CLI commands", () => {
     });
   });
   describe("permissionGrantCommand", async () => {
-    it("success", async () => {
+    it("success interactive = false", async () => {
+      sandbox
+        .stub(FxCore.prototype, "grantPermission")
+        .resolves(ok({ state: "OK" } as PermissionsResult));
+      const ctx: CLIContext = {
+        command: { ...permissionGrantCommand, fullName: "teamsfx" },
+        optionValues: { "manifest-file-path": "abc" },
+        globalOptionValues: { interactive: false },
+        argumentValues: [],
+        telemetryProperties: {},
+      };
+      const res = await permissionGrantCommand.handler!(ctx);
+      assert.isTrue(res.isOk());
+    });
+    it("success interactive = true", async () => {
       sandbox
         .stub(FxCore.prototype, "grantPermission")
         .resolves(ok({ state: "OK" } as PermissionsResult));
       const ctx: CLIContext = {
         command: { ...permissionGrantCommand, fullName: "teamsfx" },
         optionValues: {},
-        globalOptionValues: {},
+        globalOptionValues: { interactive: true },
         argumentValues: [],
         telemetryProperties: {},
       };
       const res = await permissionGrantCommand.handler!(ctx);
       assert.isTrue(res.isOk());
+    });
+    it("missing option", async () => {
+      sandbox
+        .stub(FxCore.prototype, "grantPermission")
+        .resolves(ok({ state: "OK" } as PermissionsResult));
+      const ctx: CLIContext = {
+        command: { ...permissionGrantCommand, fullName: "teamsfx" },
+        optionValues: {},
+        globalOptionValues: { interactive: false },
+        argumentValues: [],
+        telemetryProperties: {},
+      };
+      const res = await permissionGrantCommand.handler!(ctx);
+      assert.isTrue(res.isErr() && res.error instanceof MissingRequiredOptionError);
     });
   });
   describe("permissionStatusCommand", async () => {
@@ -703,9 +790,7 @@ describe("CLI read-only commands", () => {
         .stub(AzureTokenProvider, "getStatus")
         .resolves({ status: signedIn, accountInfo: { upn: "xxx" } });
       sandbox.stub(codeFlowLogin, "checkIsOnline").resolves(false);
-      const outputAccountInfoOffline = sandbox
-        .stub(accountUtils, "outputAccountInfoOffline")
-        .resolves();
+      const outputAccountInfoOffline = sandbox.stub(accountUtils, "outputAccountInfoOffline");
       messages = [];
       const ctx: CLIContext = {
         command: { ...accountShowCommand, fullName: "teamsfx account show" },
@@ -850,32 +935,102 @@ describe("CLI read-only commands", () => {
   });
 
   describe("listCapabilitiesCommand", async () => {
-    it("success", async () => {
+    let mockedEnvRestore: RestoreFn;
+
+    afterEach(() => {
+      if (mockedEnvRestore) {
+        mockedEnvRestore();
+      }
+    });
+    it("json", async () => {
+      mockedEnvRestore = mockedEnv({
+        COPILOT_PLUGIN: "false",
+      });
       const ctx: CLIContext = {
         command: { ...listCapabilitiesCommand, fullName: "teamsfx ..." },
-        optionValues: {},
+        optionValues: { format: "json" },
         globalOptionValues: {},
         argumentValues: ["key", "value"],
         telemetryProperties: {},
       };
       const res = await listCapabilitiesCommand.handler!(ctx);
       assert.isTrue(res.isOk());
-      assert.isTrue(messages.includes(JSON.stringify(CapabilityOptions.all(), undefined, 2)));
+      assert.isFalse(!!messages.find((msg) => msg.includes("copilot-plugin-capability")));
+    });
+    it("table with description", async () => {
+      const ctx: CLIContext = {
+        command: { ...listCapabilitiesCommand, fullName: "teamsfx ..." },
+        optionValues: { format: "table", description: true },
+        globalOptionValues: {},
+        argumentValues: ["key", "value"],
+        telemetryProperties: {},
+      };
+      const res = await listCapabilitiesCommand.handler!(ctx);
+      assert.isTrue(res.isOk());
+    });
+    it("table without description", async () => {
+      const ctx: CLIContext = {
+        command: { ...listCapabilitiesCommand, fullName: "teamsfx ..." },
+        optionValues: { format: "table", description: false },
+        globalOptionValues: {},
+        argumentValues: ["key", "value"],
+        telemetryProperties: {},
+      };
+      const res = await listCapabilitiesCommand.handler!(ctx);
+      assert.isTrue(res.isOk());
+    });
+    it("json copilot plugin feature flag enabled", async () => {
+      mockedEnvRestore = mockedEnv({
+        COPILOT_PLUGIN: "true",
+      });
+      const ctx: CLIContext = {
+        command: { ...listCapabilitiesCommand, fullName: "teamsfx ..." },
+        optionValues: { format: "json" },
+        globalOptionValues: {},
+        argumentValues: ["key", "value"],
+        telemetryProperties: {},
+      };
+      const res = await listCapabilitiesCommand.handler!(ctx);
+      assert.isTrue(res.isOk());
+      assert.isTrue(!!messages.find((msg) => msg.includes("copilot-plugin-capability")));
     });
   });
   describe("listSamplesCommand", async () => {
-    it("success", async () => {
+    it("json", async () => {
       sandbox.stub(utils, "getTemplates").resolves([]);
       const ctx: CLIContext = {
         command: { ...listSamplesCommand, fullName: "teamsfx ..." },
-        optionValues: {},
+        optionValues: { format: "json" },
         globalOptionValues: {},
         argumentValues: ["key", "value"],
         telemetryProperties: {},
       };
       const res = await listSamplesCommand.handler!(ctx);
       assert.isTrue(res.isOk());
-      assert.isTrue(messages.includes(JSON.stringify([], undefined, 2)));
+    });
+    it("table with filter + description", async () => {
+      sandbox.stub(utils, "getTemplates").resolves([]);
+      const ctx: CLIContext = {
+        command: { ...listSamplesCommand, fullName: "teamsfx ..." },
+        optionValues: { tag: "tab", format: "table", description: true },
+        globalOptionValues: {},
+        argumentValues: ["key", "value"],
+        telemetryProperties: {},
+      };
+      const res = await listSamplesCommand.handler!(ctx);
+      assert.isTrue(res.isOk());
+    });
+    it("table without description", async () => {
+      sandbox.stub(utils, "getTemplates").resolves([]);
+      const ctx: CLIContext = {
+        command: { ...listSamplesCommand, fullName: "teamsfx ..." },
+        optionValues: { format: "table", description: false },
+        globalOptionValues: {},
+        argumentValues: ["key", "value"],
+        telemetryProperties: {},
+      };
+      const res = await listSamplesCommand.handler!(ctx);
+      assert.isTrue(res.isOk());
     });
   });
 });

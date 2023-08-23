@@ -271,7 +271,7 @@ function confirmManifestQuestion(isTeamsApp = true, isLocal = false): SingleSele
     false_true: QuestionNames.ConfirmAadManifest,
     false_false: QuestionNames.ConfirmAadManifest,
   };
-  const name = map[`${isTeamsApp}_${isLocal}`];
+  const name = map[`${isTeamsApp.toString()}_${isLocal.toString()}`];
   return {
     name: name,
     title: isTeamsApp
@@ -570,6 +570,7 @@ function selectAppTypeQuestion(): MultiSelectQuestion {
         description: getLocalizedString("core.teamsAppQuestion.description"),
       },
     ],
+    validation: { minItems: 1 },
   };
 }
 

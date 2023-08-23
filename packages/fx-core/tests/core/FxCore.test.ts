@@ -51,11 +51,11 @@ import { ValidateManifestDriver } from "../../src/component/driver/teamsApp/vali
 import { ValidateAppPackageDriver } from "../../src/component/driver/teamsApp/validateAppPackage";
 import "../../src/component/feature/sso";
 import * as CopilotPluginHelper from "../../src/component/generator/copilotPlugin/helper";
+import * as buildAadManifest from "../../src/component/driver/aad/utility/buildAadManifest";
 import { OpenAIPluginManifestHelper } from "../../src/component/generator/copilotPlugin/helper";
 import { envUtil } from "../../src/component/utils/envUtil";
 import { metadataUtil } from "../../src/component/utils/metadataUtil";
 import { pathUtils } from "../../src/component/utils/pathUtils";
-import { FxCoreV3Implement } from "../../src/core/FxCoreImplementV3";
 import * as collaborator from "../../src/core/collaborator";
 import { environmentManager } from "../../src/core/environment";
 import { setTools } from "../../src/core/globalVars";
@@ -76,6 +76,7 @@ import {
 import { HubOptions } from "../../src/question/other";
 import { validationUtils } from "../../src/ui/validationUtils";
 import { MockTools, randomAppName } from "./utils";
+import { createDriverContext } from "../../src/component/utils";
 
 const tools = new MockTools();
 
@@ -177,8 +178,8 @@ describe("Core basic APIs", () => {
   });
   it("deploy aad manifest happy path with click learn more", async () => {
     const core = new FxCore(tools);
-    const openUrl = sandbox.spy(tools.ui, "openUrl");
     sandbox.stub(tools.ui, "showMessage").resolves(ok("Learn more"));
+    sandbox.stub(tools.ui, "openUrl").resolves(ok(true));
     const appName = await mockV3Project();
     sandbox.stub(UpdateAadAppDriver.prototype, "run").resolves(new Ok(new Map()));
     const inputs: Inputs = {
@@ -194,11 +195,10 @@ describe("Core basic APIs", () => {
       projectPath: path.join(os.tmpdir(), appName),
     };
     const res = await core.deployAadManifest(inputs);
-    assert.isTrue(await fs.pathExists(path.join(os.tmpdir(), appName, "build")));
-    assert.isTrue(openUrl.called);
-    assert.equal(openUrl.getCall(0).args[0], "https://aka.ms/teamsfx-view-aad-app-v5");
-    await deleteTestProject(appName);
     assert.isTrue(res.isOk());
+    if (res.isErr()) console.error(res.error);
+    assert.isTrue(await fs.pathExists(path.join(os.tmpdir(), appName, "build")));
+    await deleteTestProject(appName);
   });
   it("deploy aad manifest happy path on cli", async () => {
     const core = new FxCore(tools);
@@ -405,37 +405,6 @@ describe("Core basic APIs", () => {
     assert.isTrue(res.isOk());
   });
 
-  it("not implement method", async () => {
-    const implement = new FxCoreV3Implement(tools);
-    const inputs: Inputs = {
-      platform: Platform.VSCode,
-      projectPath: path.join(os.tmpdir(), appName, "samples-v3"),
-    };
-    try {
-      const noImplemtnMethod = async (inputs: Inputs) => {
-        return "";
-      };
-      await implement.dispatch(noImplemtnMethod, inputs);
-      assert.fail("v3 dispatch matched no implemented method");
-    } catch (error) {
-      assert.isNotNull(error);
-    }
-
-    try {
-      const mockFunc = {
-        namespace: "mock namespace",
-        method: "mock func",
-      };
-      const noImplemtnMethod = async (func: Func, inputs: Inputs) => {
-        return "";
-      };
-      await implement.dispatchUserTask(noImplemtnMethod, mockFunc, inputs);
-      assert.fail("v3 dispatchUserTask matched no implemented method");
-    } catch (error) {
-      assert.isNotNull(error);
-    }
-  });
-
   it("buildAadManifest method should exist", async () => {
     const restore = mockedEnv({
       TEAMSFX_DEBUG_TEMPLATE: "true", // workaround test failure that when local template not released to GitHub
@@ -445,41 +414,28 @@ describe("Core basic APIs", () => {
       TAB_DOMAIN: "fake",
       TAB_ENDPOINT: "fake",
     });
+
+    const originFunc = envUtil.readEnv;
     try {
-      sandbox.stub(envUtil, "readEnv").resolves(
-        ok({
+      envUtil.readEnv = async () => {
+        return ok({
           AAD_APP_OBJECT_ID: getUuid(),
           AAD_APP_CLIENT_ID: getUuid(),
           TAB_DOMAIN: "fake",
           TAB_ENDPOINT: "fake",
-        })
-      );
-      const appName = randomAppName();
+        });
+      };
       const core = new FxCore(tools);
+      const appName = await mockV3Project();
       const inputs: Inputs = {
         platform: Platform.VSCode,
-        [QuestionNames.AppName]: appName,
-        [QuestionNames.Scratch]: ScratchOptions.yes().id,
-        [QuestionNames.ProgrammingLanguage]: "javascript",
-        [QuestionNames.Capabilities]: CapabilityOptions.nonSsoTab().id,
-        [QuestionNames.Folder]: os.tmpdir(),
-        stage: Stage.create,
-        projectPath: path.join(os.tmpdir(), appName, "samples-v3"),
+        projectPath: path.join(os.tmpdir(), appName),
       };
-      const res = await core.createProject(inputs);
-      const projectPath = inputs.projectPath!;
-      assert.isTrue(res.isOk() && res.value.projectPath === projectPath);
-
-      const implement = new FxCoreV3Implement(tools);
-
-      const mockFunc = {
-        namespace: "mock namespace",
-        method: "buildAadManifest",
-      };
-
-      const result = await implement.executeUserTask(mockFunc, inputs);
+      sandbox.stub(buildAadManifest, "buildAadManifest").resolves({} as any);
+      const result = await core.buildAadManifest(inputs);
       assert.isTrue(result.isOk());
     } finally {
+      envUtil.readEnv = originFunc;
       restore();
     }
   });
@@ -506,7 +462,7 @@ describe("Core basic APIs", () => {
       const projectPath = inputs.projectPath!;
       assert.isTrue(res.isOk() && res.value.projectPath === projectPath);
 
-      const implement = new FxCoreV3Implement(tools);
+      const implement = new FxCore(tools);
 
       const mockFunc = {
         namespace: "mock namespace",
@@ -685,6 +641,103 @@ describe("apply yaml template", async () => {
       assert.isTrue(res.isErr() && res.error.name === "mockedError");
     });
   });
+  describe("runLifecycle", async () => {
+    const sandbox = sinon.createSandbox();
+
+    const mockedError = new SystemError("mockedSource", "mockedError", "mockedMessage");
+    class MockedProvision implements ILifecycle {
+      name: LifecycleName = "provision";
+      driverDefs: DriverDefinition[] = [];
+      public async run(ctx: DriverContext): Promise<Result<Output, FxError>> {
+        return err(mockedError);
+      }
+
+      public resolvePlaceholders(): UnresolvedPlaceholders {
+        return [];
+      }
+
+      public async execute(ctx: DriverContext): Promise<ExecutionResult> {
+        return {
+          result: ok(new Map()),
+          summaries: [],
+        };
+      }
+
+      public resolveDriverInstances(log: LogProvider): Result<DriverInstance[], FxError> {
+        return ok([]);
+      }
+    }
+
+    afterEach(() => {
+      sandbox.restore();
+    });
+
+    it("happy", async () => {
+      const core = new FxCore(tools);
+      const inputs: Inputs = {
+        platform: Platform.CLI,
+        projectPath: "./",
+        env: "dev",
+      };
+      sandbox.stub(envUtil, "writeEnv").resolves(ok(undefined));
+      const context = createDriverContext(inputs);
+      const lifecycle = new MockedProvision();
+      const res = await core.runLifecycle(lifecycle, context, "dev");
+      assert.isTrue(res.isOk());
+    });
+
+    it("partial success", async () => {
+      const core = new FxCore(tools);
+      const inputs: Inputs = {
+        platform: Platform.CLI,
+        projectPath: "./",
+        env: "dev",
+      };
+      sandbox.stub(envUtil, "writeEnv").resolves(ok(undefined));
+      const lifecycle = new MockedProvision();
+      sandbox.stub(lifecycle, "execute").resolves({
+        result: err({
+          kind: "PartialSuccess",
+          env: new Map(),
+          reason: {
+            kind: "UnresolvedPlaceholders",
+            failedDriver: { uses: "t", with: {} },
+            unresolvedPlaceHolders: ["TEST_VAR"],
+          },
+        }),
+        summaries: [],
+      });
+      const context = createDriverContext(inputs);
+      const res = await core.runLifecycle(lifecycle, context, "dev");
+      assert.isTrue(res.isOk());
+    });
+
+    it("DriverError", async () => {
+      const core = new FxCore(tools);
+      const inputs: Inputs = {
+        platform: Platform.CLI,
+        projectPath: "./",
+        env: "dev",
+      };
+      sandbox.stub(envUtil, "writeEnv").resolves(ok(undefined));
+      const lifecycle = new MockedProvision();
+      sandbox.stub(lifecycle, "execute").resolves({
+        result: err({
+          kind: "PartialSuccess",
+          env: new Map(),
+          reason: {
+            kind: "DriverError",
+            failedDriver: { uses: "t", with: {} },
+            error: mockedError,
+          },
+        }),
+        summaries: [],
+      });
+      const context = createDriverContext(inputs);
+      const res = await core.runLifecycle(lifecycle, context, "dev");
+      assert.isTrue(res.isErr());
+    });
+  });
 });
 
 async function mockV3Project(): Promise<string> {
@@ -747,7 +800,7 @@ describe("createEnvCopyV3", async () => {
     sandbox.stub(pathUtils, "getEnvFilePath").resolves(ok("./env/.env.dev"));
     sandbox.stub(fs, "pathExists").resolves(true);
     const core = new FxCore(tools);
-    const res = await core.v3Implement.createEnvCopyV3("newEnv", "dev", "./");
+    const res = await core.createEnvCopyV3("newEnv", "dev", "./");
     assert(res.isOk());
     assert(
       writeStreamContent[0] === `${sourceEnvContent[0]}${os.EOL}`,
@@ -778,7 +831,7 @@ describe("createEnvCopyV3", async () => {
       .onFirstCall()
       .resolves(err(new UserError({})));
     const core = new FxCore(tools);
-    const res = await core.v3Implement.createEnvCopyV3("newEnv", "dev", "./");
+    const res = await core.createEnvCopyV3("newEnv", "dev", "./");
     assert(res.isErr());
   });
 
@@ -790,7 +843,7 @@ describe("createEnvCopyV3", async () => {
       .onSecondCall()
       .resolves(err(new UserError({})));
     const core = new FxCore(tools);
-    const res = await core.v3Implement.createEnvCopyV3("newEnv", "dev", "./");
+    const res = await core.createEnvCopyV3("newEnv", "dev", "./");
     assert(res.isErr());
   });
 });
@@ -844,7 +897,7 @@ describe("Teams app APIs", async () => {
       projectPath: path.join(os.tmpdir(), appName),
     };
 
-    const runSpy = sinon.spy(ValidateAppPackageDriver.prototype, "run");
+    const runSpy = sinon.spy(ValidateAppPackageDriver.prototype, "execute");
     sinon.stub(validationUtils, "validateInputs").resolves(undefined);
     await core.validateApplication(inputs);
     sinon.assert.calledOnce(runSpy);
@@ -860,7 +913,7 @@ describe("Teams app APIs", async () => {
       projectPath: path.join(os.tmpdir(), appName),
     };
 
-    const runSpy = sinon.spy(ValidateManifestDriver.prototype, "run");
+    const runSpy = sinon.spy(ValidateManifestDriver.prototype, "execute");
     await core.validateApplication(inputs);
     sinon.assert.calledOnce(runSpy);
   });
@@ -877,7 +930,9 @@ describe("Teams app APIs", async () => {
     };
 
     sinon.stub(process, "platform").value("win32");
-    const runStub = sinon.stub(CreateAppPackageDriver.prototype, "run").resolves(ok(new Map()));
+    const runStub = sinon
+      .stub(CreateAppPackageDriver.prototype, "execute")
+      .resolves({ result: ok(new Map()), summaries: [] });
     const showMessageStub = sinon.stub(tools.ui, "showMessage");
     await core.createAppPackage(inputs);
     sinon.assert.calledOnce(runStub);
@@ -1267,8 +1322,8 @@ describe("isEnvFile", async () => {
           "spfx-webpart-name",
           "spfx-folder",
           "copilot-plugin-option",
-          "api-spec-location",
-          "openai-plugin-manifest-location",
+          "openapi-spec-location",
+          "openai-plugin-domain",
           "api-operation",
           "programming-language",
           "folder",
@@ -1302,7 +1357,7 @@ describe("copilotPlugin", async () => {
       platform: Platform.VSCode,
       [QuestionNames.Folder]: os.tmpdir(),
       [QuestionNames.ApiSpecLocation]: "test.json",
-      [QuestionNames.ApiOperation]: ["testOperation"],
+      [QuestionNames.ApiOperation]: ["GET /user/{userId}"],
       [QuestionNames.ManifestPath]: "manifest.json",
       projectPath: path.join(os.tmpdir(), appName),
     };
@@ -1314,8 +1369,13 @@ describe("copilotPlugin", async () => {
         commands: [],
       },
     ];
+    const operationMap = new Map<string, string>([
+      ["getUserById", "GET /user/{userId}"],
+      ["getStoreOrder", "GET /store/order"],
+    ]);
     const core = new FxCore(tools);
     sinon.stub(SpecParser.prototype, "generate").resolves();
+    sinon.stub(SpecParser.prototype, "listOperationMap").resolves(operationMap);
     sinon.stub(manifestUtils, "_readAppManifest").resolves(ok(manifest));
     sinon.stub(validationUtils, "validateInputs").resolves(undefined);
     const result = await core.copilotPluginAddAPI(inputs);

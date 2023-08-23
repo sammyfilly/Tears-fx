@@ -123,15 +123,17 @@ export interface CLIBooleanOption extends CLICommandOptionBase {
 export interface CLICommand {
     arguments?: CLICommandArgument[];
     commands?: CLICommand[];
+    defaultInteractiveOption?: boolean;
     description: string;
     examples?: CLIExample[];
     footer?: string;
     fullName?: string;
-    handler?: (ctx: CLIContext) => Promise<Result<undefined, FxError>>;
+    handler?: (ctx: CLIContext) => Promise<Result<undefined, FxError>> | Result<undefined, FxError>;
     header?: string;
     hidden?: boolean;
     name: string;
     options?: CLICommandOption[];
+    reservedOptionNamesInInteractiveMode?: string[];
     sortCommands?: boolean;
     sortOptions?: boolean;
     telemetry?: {
@@ -148,7 +150,7 @@ export type CLICommandOption = CLIBooleanOption | CLIStringOption | CLIArrayOpti
 
 // @public (undocumented)
 export interface CLIContext {
-    argumentValues: string[];
+    argumentValues: OptionValue[];
     command: CLIFoundCommand;
     globalOptionValues: Record<string, OptionValue>;
     optionValues: Record<string, OptionValue>;
@@ -350,6 +352,16 @@ export interface Group {
 }
 
 // @public
+export interface InnerTextInputQuestion extends UserInputQuestion {
+    default?: string | LocalFunc<string | undefined>;
+    password?: boolean;
+    // (undocumented)
+    type: "innerText";
+    validation?: StringValidation | FuncValidation<string>;
+    value?: string;
+}
+
+// @public
 export interface InputResult<T> {
     result?: T;
     type: "success" | "skip" | "back";
@@ -376,7 +388,7 @@ export type InputsWithProjectPath = Inputs & {
 
 // @public
 export interface InputTextConfig extends UIConfig<string> {
-    additionalValidationOnAccept?: ValidateFunc<string>;
+    additionalValidationOnAccept?: (input: string) => string | undefined | Promise<string | undefined>;
     // (undocumented)
     default?: string | (() => Promise<string>);
     password?: boolean;
@@ -420,27 +432,26 @@ export type LoginStatus = {
 // @public (undocumented)
 export enum LogLevel {
     Debug = 1,
-    Error = 4,
-    Fatal = 5,
-    Info = 2,
-    Trace = 0,
-    Warning = 3
+    Error = 5,
+    Info = 3,
+    Verbose = 2,
+    Warning = 4
 }
 
 // @public (undocumented)
 export interface LogProvider {
-    debug(message: string): Promise<boolean>;
-    error(message: string, logToFile?: boolean): Promise<boolean>;
-    fatal(message: string): Promise<boolean>;
+    debug(message: string): void;
+    error(message: string): void;
     getLogFilePath(): string;
-    info(message: string, logToFile?: boolean): Promise<boolean>;
+    info(message: string): void;
     info(message: Array<{
         content: string;
         color: Colors;
-    }>, logToFile?: boolean): Promise<boolean>;
-    log(logLevel: LogLevel, message: string): Promise<boolean>;
-    trace(message: string): Promise<boolean>;
-    warning(message: string, logToFile?: boolean): Promise<boolean>;
+    }>): void;
+    log(logLevel: LogLevel, message: string): void;
+    logInFile(logLevel: LogLevel, message: string): Promise<void>;
+    verbose(message: string): void;
+    warning(message: string): void;
 }
 
 // @public
@@ -676,7 +687,7 @@ export interface SingleFileOrInputConfig extends UIConfig<string> {
     filters?: {
         [name: string]: string[];
     };
-    inputBoxConfig: InputTextConfig;
+    inputBoxConfig: UIConfig<string>;
     inputOptionItem: OptionItem;
 }
 
@@ -685,7 +696,7 @@ export interface SingleFileOrInputQuestion extends UserInputQuestion {
     filters?: {
         [name: string]: string[];
     };
-    inputBoxConfig: TextInputQuestion;
+    inputBoxConfig: InnerTextInputQuestion;
     inputOptionItem: OptionItem;
     // (undocumented)
     type: "singleFileOrText";
@@ -1057,7 +1068,7 @@ export interface UserInputQuestion extends BaseQuestion {
     prompt?: string | LocalFunc<string | undefined>;
     required?: boolean;
     title: string | LocalFunc<string | undefined>;
-    type: "singleSelect" | "multiSelect" | "singleFile" | "multiFile" | "folder" | "text" | "singleFileOrText";
+    type: "singleSelect" | "multiSelect" | "singleFile" | "multiFile" | "folder" | "text" | "singleFileOrText" | "innerText";
     validation?: ValidationSchema;
     validationHelp?: string;
 }

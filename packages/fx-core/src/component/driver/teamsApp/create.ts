@@ -38,7 +38,6 @@ import { getLocalizedString } from "../../../common/localizeUtils";
 import { getTemplatesFolder } from "../../../folder";
 import { InvalidActionInputError } from "../../../error/common";
 import { loadStateFromEnv } from "../util/utils";
-import { updateProgress } from "../middleware/updateProgress";
 
 const actionName = "teamsApp/create";
 
@@ -53,14 +52,9 @@ export const internalOutputNames = {
 @Service(actionName)
 export class CreateTeamsAppDriver implements StepDriver {
   description = getLocalizedString("driver.teamsApp.description.createDriver");
-  public async run(
-    args: CreateTeamsAppArgs,
-    context: DriverContext
-  ): Promise<Result<Map<string, string>, FxError>> {
-    const wrapContext = new WrapDriverContext(context, actionName, actionName);
-    const res = await this.create(args, wrapContext);
-    return res;
-  }
+  readonly progressTitle = getLocalizedString(
+    "driver.teamsApp.progressBar.createTeamsAppStepMessage"
+  );
 
   public async execute(
     args: CreateTeamsAppArgs,
@@ -75,10 +69,7 @@ export class CreateTeamsAppDriver implements StepDriver {
     };
   }
 
-  @hooks([
-    addStartAndEndTelemetry(actionName, actionName),
-    updateProgress(getLocalizedString("driver.teamsApp.progressBar.createTeamsAppStepMessage")),
-  ])
+  @hooks([addStartAndEndTelemetry(actionName, actionName)])
   async create(
     args: CreateTeamsAppArgs,
     context: WrapDriverContext,
@@ -153,7 +144,7 @@ export class CreateTeamsAppDriver implements StepDriver {
           "plugins.appstudio.teamsAppCreatedNotice",
           createdAppDefinition.teamsAppId!
         );
-        await context.logProvider.info(message);
+        context.logProvider.info(message);
         context.addSummary(message);
         return ok(
           new Map([
@@ -182,7 +173,9 @@ export class CreateTeamsAppDriver implements StepDriver {
       );
       return ok(
         new Map([
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
           [outputEnvVarNames.get("teamsAppId") as string, createdAppDefinition!.teamsAppId!],
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
           [outputEnvVarNames.get("teamsAppTenantId") as string, createdAppDefinition!.tenantId!],
         ])
       );

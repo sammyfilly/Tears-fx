@@ -19,14 +19,15 @@ export const configGetCommand: CLICommand = {
   telemetry: {
     event: TelemetryEvent.CreateNewEnvironment,
   },
-  handler: async (ctx) => {
+  defaultInteractiveOption: false,
+  handler: (ctx) => {
     const configName = ctx.argumentValues[0] as string | undefined;
-    const globalResult = await printGlobalConfig(configName);
+    const globalResult = printGlobalConfig(configName);
     return globalResult;
   },
 };
 
-export async function printGlobalConfig(option?: string): Promise<Result<undefined, FxError>> {
+export function printGlobalConfig(option?: string): Result<undefined, FxError> {
   const result = UserSettings.getConfigSync();
   if (result.isErr()) {
     return result;

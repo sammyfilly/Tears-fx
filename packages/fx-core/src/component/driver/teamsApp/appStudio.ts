@@ -87,7 +87,7 @@ export async function updateManifestV3(
     inputs.projectPath,
     AppPackageFolderName,
     BuildFolderName,
-    `manifest.${state.ENV_NAME}.json`
+    `manifest.${state.ENV_NAME!}.json`
   );
 
   // Prepare for driver
@@ -117,7 +117,7 @@ export async function updateManifestV3(
     !(await fs.pathExists(manifestFileName)) ||
     !(await fs.pathExists(createAppPackageArgs.outputZipPath))
   ) {
-    const res = await buildDriver.run(createAppPackageArgs, driverContext);
+    const res = (await buildDriver.execute(createAppPackageArgs, driverContext)).result;
     if (res.isErr()) {
       return err(res.error);
     }
@@ -138,9 +138,9 @@ export async function updateManifestV3(
     );
 
     if (res?.isOk() && res.value === previewOnly) {
-      return await buildDriver.run(createAppPackageArgs, driverContext);
+      return (await buildDriver.execute(createAppPackageArgs, driverContext)).result;
     } else if (res?.isOk() && res.value === previewUpdate) {
-      await buildDriver.run(createAppPackageArgs, driverContext);
+      await buildDriver.execute(createAppPackageArgs, driverContext);
     } else {
       return err(new UserCancelError("appStudio"));
     }
@@ -174,7 +174,7 @@ export async function updateManifestV3(
     }
 
     const configureDriver: ConfigureTeamsAppDriver = Container.get(configureTeamsAppActionName);
-    const result = await configureDriver.run(updateTeamsAppArgs, driverContext);
+    const result = (await configureDriver.execute(updateTeamsAppArgs, driverContext)).result;
     if (result.isErr()) {
       return err(result.error);
     }
@@ -198,7 +198,7 @@ export async function updateManifestV3(
       ];
       await ctx.userInteraction.showMessage("info", message, false);
     } else {
-      await ctx.userInteraction
+      void ctx.userInteraction
         .showMessage(
           "info",
           getLocalizedString("plugins.appstudio.teamsAppUpdatedNotice"),
@@ -291,7 +291,7 @@ export async function updateTeamsAppV3ForPublish(
   }
 
   const configureDriver: ConfigureTeamsAppDriver = Container.get(configureTeamsAppActionName);
-  const result = await configureDriver.run(updateTeamsAppArgs, driverContext);
+  const result = (await configureDriver.execute(updateTeamsAppArgs, driverContext)).result;
   if (result.isErr()) {
     return err(result.error);
   }
@@ -323,7 +323,7 @@ export async function getAppPackage(
     const zip = new AdmZip(buffer);
     const zipEntries = zip.getEntries(); // an array of ZipEntry records
 
-    zipEntries?.forEach(async function (zipEntry) {
+    zipEntries?.forEach(function (zipEntry) {
       const data = zipEntry.getData();
       const name = zipEntry.entryName.toLowerCase();
       switch (name) {
@@ -343,9 +343,7 @@ export async function getAppPackage(
           if (supportedLanguageCodes.findIndex((code) => code === base) > -1) {
             set(appPackage, ["languages", base], data);
           } else {
-            await logProvider?.warning(
-              getLocalizedString("plugins.appstudio.unprocessedFile", name)
-            );
+            logProvider?.warning(getLocalizedString("plugins.appstudio.unprocessedFile", name));
           }
       }
     });

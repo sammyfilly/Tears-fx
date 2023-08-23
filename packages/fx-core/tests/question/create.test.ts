@@ -35,6 +35,7 @@ import {
   folderQuestion,
   getLanguageOptions,
   getTemplate,
+  officeAddinHostingQuestion,
   openAIPluginManifestLocationQuestion,
   programmingLanguageQuestion,
 } from "../../src/question/create";
@@ -590,6 +591,8 @@ describe("scaffold question", () => {
         await callFuncs(question, inputs);
         if (question.name === QuestionNames.Capabilities) {
           const select = question as SingleSelectQuestion;
+          const staticOptions = select.staticOptions;
+          assert.isTrue(staticOptions.length === 13);
           const options = await select.dynamicOptions!(inputs);
           assert.isTrue(options.length === 12);
           return ok({ type: "success", result: CapabilityOptions.notificationBot().id });
@@ -815,7 +818,7 @@ describe("scaffold question", () => {
               type: "success",
               result: CapabilityOptions.copilotPluginOpenAIPlugin().id,
             });
-          } else if (question.name === QuestionNames.OpenAIPluginManifestLocation) {
+          } else if (question.name === QuestionNames.OpenAIPluginDomain) {
             return ok({ type: "success", result: "https://test.com" });
           } else if (question.name === QuestionNames.ApiOperation) {
             return ok({ type: "success", result: ["testOperation1"] });
@@ -835,7 +838,7 @@ describe("scaffold question", () => {
         assert.deepEqual(questions, [
           QuestionNames.ProjectType,
           QuestionNames.Capabilities,
-          QuestionNames.OpenAIPluginManifestLocation,
+          QuestionNames.OpenAIPluginDomain,
           QuestionNames.ApiOperation,
           QuestionNames.Folder,
           QuestionNames.AppName,
@@ -923,7 +926,41 @@ describe("scaffold question", () => {
       });
 
       describe("apiSpecLocationQuestion", async () => {
+        it("invalid API spec location", async () => {
+          const question = apiSpecLocationQuestion();
+          const inputs: Inputs = {
+            platform: Platform.VSCode,
+          };
+          sandbox.stub(fs, "pathExists").resolves(false);
+
+          const validationSchema = question.validation as FuncValidation<string>;
+          const res = await validationSchema.validFunc!("file", inputs);
+
+          assert.isNotEmpty(res);
+        });
+
         it("valid API spec selecting from local file", async () => {
+          const question = apiSpecLocationQuestion();
+          const inputs: Inputs = {
+            platform: Platform.VSCode,
+          };
+
+          sandbox
+            .stub(SpecParser.prototype, "validate")
+            .resolves({ status: ValidationStatus.Valid, errors: [], warnings: [] });
+          sandbox.stub(SpecParser.prototype, "list").resolves(["get operation1", "get operation2"]);
+          sandbox.stub(fs, "pathExists").resolves(true);
+
+          const validationSchema = question.validation as FuncValidation<string>;
+          const res = await validationSchema.validFunc!("file", inputs);
+          assert.deepEqual(inputs.supportedApisFromApiSpec, [
+            { id: "get operation1", label: "get operation1", groupName: "GET" },
+            { id: "get operation2", label: "get operation2", groupName: "GET" },
+          ]);
+          assert.isUndefined(res);
+        });
+
+        it("valid API spec of remote URL", async () => {
           const question = apiSpecLocationQuestion();
           const inputs: Inputs = {
             platform: Platform.VSCode,
@@ -935,36 +972,20 @@ describe("scaffold question", () => {
           sandbox.stub(SpecParser.prototype, "list").resolves(["get operation1", "get operation2"]);
 
           const validationSchema = question.validation as FuncValidation<string>;
-          const res = await validationSchema.validFunc!("file", inputs);
+          const res = await validationSchema.validFunc!("https://www.test.com", inputs);
           assert.deepEqual(inputs.supportedApisFromApiSpec, [
             { id: "get operation1", label: "get operation1", groupName: "GET" },
             { id: "get operation2", label: "get operation2", groupName: "GET" },
           ]);
           assert.isUndefined(res);
         });
-
-        it("skip validating on selectFile result if user selects to input URL", async () => {
-          const question = apiSpecLocationQuestion();
-          const inputs: Inputs = {
-            platform: Platform.VSCode,
-          };
-
-          sandbox
-            .stub(SpecParser.prototype, "validate")
-            .resolves({ status: ValidationStatus.Valid, errors: [], warnings: [] });
-          sandbox.stub(SpecParser.prototype, "list").resolves(["operation1", "operation2"]);
-
-          const validationSchema = question.validation as FuncValidation<string>;
-          const res = await validationSchema.validFunc!("input", inputs);
-          assert.isUndefined(res);
-        });
-
         it("invalid api spec", async () => {
           const question = apiSpecLocationQuestion();
           const inputs: Inputs = {
             platform: Platform.VSCode,
             [QuestionNames.ApiSpecLocation]: "apispec",
           };
+          sandbox.stub(fs, "pathExists").resolves(true);
           sandbox.stub(SpecParser.prototype, "validate").resolves({
             status: ValidationStatus.Error,
             errors: [
@@ -1002,6 +1023,7 @@ describe("scaffold question", () => {
             ],
             warnings: [],
           });
+          sandbox.stub(fs, "pathExists").resolves(true);
 
           const validationSchema = question.validation as FuncValidation<string>;
           const res = await validationSchema.validFunc!("file", inputs);
@@ -1020,6 +1042,7 @@ describe("scaffold question", () => {
             platform: Platform.CLI,
             [QuestionNames.ApiSpecLocation]: "apispec",
           };
+          sandbox.stub(fs, "pathExists").resolves(true);
           sandbox.stub(SpecParser.prototype, "validate").resolves({
             status: ValidationStatus.Error,
             errors: [
@@ -1041,73 +1064,32 @@ describe("scaffold question", () => {
           assert.equal(res, "error\nerror2");
         });
 
-        it("valid API spec from remote URL", async () => {
-          const question = apiSpecLocationQuestion();
-          const inputs: Inputs = {
-            platform: Platform.VSCode,
-          };
-
-          sandbox
-            .stub(SpecParser.prototype, "validate")
-            .resolves({ status: ValidationStatus.Valid, errors: [], warnings: [] });
-          sandbox.stub(SpecParser.prototype, "list").resolves(["get operation1", "get operation2"]);
-
-          const validate = (
-            question.inputBoxConfig.additionalValidationOnAccept! as FuncValidation<string>
-          ).validFunc;
-          const res = await validate("url1", inputs);
-          assert.deepEqual(inputs.supportedApisFromApiSpec, [
-            { id: "get operation1", label: "get operation1", groupName: "GET" },
-            { id: "get operation2", label: "get operation2", groupName: "GET" },
-          ]);
-          assert.isUndefined(res);
-        });
-
-        it("valid api spec and list operations error", async () => {
-          const question = apiSpecLocationQuestion();
-          const inputs: Inputs = {
-            platform: Platform.VSCode,
-            [QuestionNames.ApiSpecLocation]: "apispec",
-          };
-          sandbox.stub(SpecParser.prototype, "validate").resolves({
-            status: ValidationStatus.Valid,
-            errors: [],
-            warnings: [{ type: WarningType.AuthNotSupported, content: "" }],
-          });
-          sandbox.stub(SpecParser.prototype, "list").throws(new Error("error1"));
-
-          const validate = (
-            question.inputBoxConfig.additionalValidationOnAccept! as FuncValidation<string>
-          ).validFunc;
-
-          let fxError: FxError;
-          try {
-            await validate("url1", inputs);
-          } catch (e) {
-            fxError = e;
-          }
-
-          assert.isTrue(fxError!.message.includes("error1"));
-        });
-
         it("list operations without existing APIs", async () => {
           const question = apiSpecLocationQuestion(false);
           const inputs: Inputs = {
             platform: Platform.VSCode,
             "manifest-path": "fakePath",
           };
+          const operationMap = new Map<string, string>([
+            ["getUserById", "GET /user/{userId}"],
+            ["getStoreOrder", "GET /store/order"],
+          ]);
 
           sandbox
             .stub(SpecParser.prototype, "validate")
             .resolves({ status: ValidationStatus.Valid, errors: [], warnings: [] });
-          sandbox.stub(SpecParser.prototype, "list").resolves(["get operation1", "get operation2"]);
+          sandbox
+            .stub(SpecParser.prototype, "list")
+            .resolves(["GET /user/{userId}", "GET /store/order"]);
+          sandbox.stub(SpecParser.prototype, "listOperationMap").resolves(operationMap);
           sandbox.stub(manifestUtils, "_readAppManifest").resolves(ok({} as any));
-          sandbox.stub(manifestUtils, "getOperationIds").returns(["get operation1"]);
+          sandbox.stub(manifestUtils, "getOperationIds").returns(["getUserById"]);
+          sandbox.stub(fs, "pathExists").resolves(true);
 
           const validationSchema = question.validation as FuncValidation<string>;
           const res = await validationSchema.validFunc!("file", inputs);
           assert.deepEqual(inputs.supportedApisFromApiSpec, [
-            { id: "get operation2", label: "get operation2", groupName: "GET" },
+            { id: "GET /store/order", label: "GET /store/order", groupName: "GET" },
           ]);
           assert.isUndefined(res);
         });
@@ -1147,7 +1129,7 @@ describe("scaffold question", () => {
           const question = openAIPluginManifestLocationQuestion();
           const inputs: Inputs = {
             platform: Platform.VSCode,
-            [QuestionNames.OpenAIPluginManifestLocation]: "openAIPluginManifest",
+            [QuestionNames.OpenAIPluginDomain]: "openAIPluginManifest",
           };
           const manifest = {
             schema_version: "1.0.0",
@@ -1175,7 +1157,7 @@ describe("scaffold question", () => {
           const question = openAIPluginManifestLocationQuestion();
           const inputs: Inputs = {
             platform: Platform.VSCode,
-            [QuestionNames.OpenAIPluginManifestLocation]: "openAIPluginManifest",
+            [QuestionNames.OpenAIPluginDomain]: "openAIPluginManifest",
           };
           const manifest = {
             schema_version: "1.0.0",
@@ -1191,7 +1173,7 @@ describe("scaffold question", () => {
           const question = openAIPluginManifestLocationQuestion();
           const inputs: Inputs = {
             platform: Platform.VSCode,
-            [QuestionNames.OpenAIPluginManifestLocation]: "openAIPluginManifest",
+            [QuestionNames.OpenAIPluginDomain]: "openAIPluginManifest",
           };
           const manifest = {
             schema_version: "1.0.0",
@@ -1217,7 +1199,7 @@ describe("scaffold question", () => {
           const question = openAIPluginManifestLocationQuestion();
           const inputs: Inputs = {
             platform: Platform.VSCode,
-            [QuestionNames.OpenAIPluginManifestLocation]: "openAIPluginManifest",
+            [QuestionNames.OpenAIPluginDomain]: "openAIPluginManifest",
           };
           const manifest = {
             schema_version: "1.0.0",
@@ -1251,7 +1233,7 @@ describe("scaffold question", () => {
           const question = openAIPluginManifestLocationQuestion();
           const inputs: Inputs = {
             platform: Platform.CLI,
-            [QuestionNames.OpenAIPluginManifestLocation]: "openAIPluginManifest",
+            [QuestionNames.OpenAIPluginDomain]: "openAIPluginManifest",
           };
           const manifest = {
             schema_version: "1.0.0",
@@ -1283,7 +1265,7 @@ describe("scaffold question", () => {
             const question = openAIPluginManifestLocationQuestion();
             const inputs: Inputs = {
               platform: Platform.VSCode,
-              [QuestionNames.OpenAIPluginManifestLocation]: "openAIPluginManifest",
+              [QuestionNames.OpenAIPluginDomain]: "openAIPluginManifest",
             };
             const input = "test.com";
             const validationRes = await (question.validation as any).validFunc!(input, inputs);
@@ -1296,7 +1278,7 @@ describe("scaffold question", () => {
             const question = openAIPluginManifestLocationQuestion();
             const inputs: Inputs = {
               platform: Platform.VSCode,
-              [QuestionNames.OpenAIPluginManifestLocation]: "openAIPluginManifest",
+              [QuestionNames.OpenAIPluginDomain]: "openAIPluginManifest",
             };
             const validationRes = await (question.validation as any).validFunc!(input, inputs);
 
@@ -1308,7 +1290,7 @@ describe("scaffold question", () => {
             const question = openAIPluginManifestLocationQuestion();
             const inputs: Inputs = {
               platform: Platform.VSCode,
-              [QuestionNames.OpenAIPluginManifestLocation]: "openAIPluginManifest",
+              [QuestionNames.OpenAIPluginDomain]: "openAIPluginManifest",
             };
             const validationRes = await (question.validation as any).validFunc!(input, inputs);
 
@@ -1320,7 +1302,7 @@ describe("scaffold question", () => {
             const question = openAIPluginManifestLocationQuestion();
             const inputs: Inputs = {
               platform: Platform.VSCode,
-              [QuestionNames.OpenAIPluginManifestLocation]: "openAIPluginManifest",
+              [QuestionNames.OpenAIPluginDomain]: "openAIPluginManifest",
             };
             const validationRes = await (question.validation as any).validFunc!(input, inputs);
 
@@ -1332,7 +1314,7 @@ describe("scaffold question", () => {
             const question = openAIPluginManifestLocationQuestion();
             const inputs: Inputs = {
               platform: Platform.VSCode,
-              [QuestionNames.OpenAIPluginManifestLocation]: "openAIPluginManifest",
+              [QuestionNames.OpenAIPluginDomain]: "openAIPluginManifest",
             };
             const validationRes = await (question.validation as any).validFunc!(input, inputs);
 
@@ -1344,7 +1326,7 @@ describe("scaffold question", () => {
             const question = openAIPluginManifestLocationQuestion();
             const inputs: Inputs = {
               platform: Platform.VSCode,
-              [QuestionNames.OpenAIPluginManifestLocation]: "openAIPluginManifest",
+              [QuestionNames.OpenAIPluginDomain]: "openAIPluginManifest",
             };
             const validationRes = await (question.validation as any).validFunc!(input, inputs);
 
@@ -1638,5 +1620,15 @@ describe("scaffold question", () => {
       assert.equal(title, "Directory where the project folder will be created in");
       assert.equal(defaultV, "./");
     });
+  });
+
+  describe("officeAddinHostingQuestion", async () => {
+    const q = officeAddinHostingQuestion();
+    const options = await q.dynamicOptions!({ platform: Platform.VSCode });
+    assert.isTrue(options.length > 0);
+    if (typeof q.default === "function") {
+      const defaultV = await q.default({ platform: Platform.VSCode });
+      assert.isDefined(defaultV);
+    }
   });
 });

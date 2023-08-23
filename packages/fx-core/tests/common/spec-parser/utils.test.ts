@@ -8,8 +8,10 @@ import fs from "fs-extra";
 import os from "os";
 import "mocha";
 import {
+  convertPathToCamelCase,
   getRelativePath,
   getResponseJson,
+  getUrlProtocol,
   isSupportedApi,
   isYamlSpecFile,
   updateFirstLetter,
@@ -77,6 +79,36 @@ describe("utils", () => {
         const result = getRelativePath(from, to);
         expect(result).to.equal("subfolder/file.txt");
       }
+    });
+  });
+
+  describe("convertPathToCamelCase", () => {
+    it("should convert a path to camel case", () => {
+      const path = "this/is/a/{test}/path";
+      const expected = "ThisIsATestPath";
+      const result = convertPathToCamelCase(path);
+      assert.strictEqual(result, expected);
+    });
+
+    it("should convert a path to camel case start with /", () => {
+      const path = "/this/is/a/{test}/path";
+      const expected = "ThisIsATestPath";
+      const result = convertPathToCamelCase(path);
+      assert.strictEqual(result, expected);
+    });
+
+    it("should return an empty string for an empty path", () => {
+      const path = "";
+      const expected = "";
+      const result = convertPathToCamelCase(path);
+      assert.strictEqual(result, expected);
+    });
+
+    it("should return the same string for a path with no slashes", () => {
+      const path = "test";
+      const expected = "Test";
+      const result = convertPathToCamelCase(path);
+      assert.strictEqual(result, expected);
     });
   });
 
@@ -193,6 +225,32 @@ describe("utils", () => {
       };
       const result = isSupportedApi(method, path, spec as any);
       assert.strictEqual(result, true);
+    });
+  });
+
+  describe("getUrlProtocol", () => {
+    it("should return the protocol of a valid URL", () => {
+      const url = "https://example.com/path/to/file";
+      const protocol = getUrlProtocol(url);
+      expect(protocol).to.equal("https:");
+    });
+
+    it("should return undefined for an invalid URL", () => {
+      const url = "not a url";
+      const protocol = getUrlProtocol(url);
+      expect(protocol).to.be.undefined;
+    });
+
+    it("should return undefined for relative url", () => {
+      const url = "/v3";
+      const protocol = getUrlProtocol(url);
+      expect(protocol).to.be.undefined;
+    });
+
+    it("should return the protocol for other protocol", () => {
+      const url = "ftp://v1";
+      const protocol = getUrlProtocol(url);
+      expect(protocol).to.equal("ftp:");
     });
   });
 

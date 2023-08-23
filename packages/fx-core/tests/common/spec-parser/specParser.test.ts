@@ -89,7 +89,10 @@ describe("SpecParser", () => {
 
     it("should return an error result object if has multiple server information", async function () {
       const specPath = "path/to/spec";
-      const spec = { openapi: "3.0.0", servers: ["server1", "server2"] };
+      const spec = {
+        openapi: "3.0.0",
+        servers: [{ url: "https://server1" }, { url: "https://server2" }],
+      };
 
       const specParser = new SpecParser(specPath);
       const parseStub = sinon.stub(specParser.parser, "parse").resolves(spec as any);
@@ -104,7 +107,57 @@ describe("SpecParser", () => {
           {
             type: ErrorType.MultipleServerInformation,
             content: ConstantString.MultipleServerInformation,
-            data: ["server1", "server2"],
+            data: [{ url: "https://server1" }, { url: "https://server2" }],
+          },
+          { type: ErrorType.NoSupportedApi, content: ConstantString.NoSupportedApi },
+        ],
+      });
+      sinon.assert.calledOnce(dereferenceStub);
+    });
+
+    it("should return an error result object if server url is http", async function () {
+      const specPath = "path/to/spec";
+      const spec = { openapi: "3.0.0", servers: [{ url: "http://server1" }] };
+
+      const specParser = new SpecParser(specPath);
+      const parseStub = sinon.stub(specParser.parser, "parse").resolves(spec as any);
+      const dereferenceStub = sinon.stub(specParser.parser, "dereference").resolves(spec as any);
+      const validateStub = sinon.stub(specParser.parser, "validate").resolves(spec as any);
+      const result = await specParser.validate();
+
+      expect(result).to.deep.equal({
+        status: ValidationStatus.Error,
+        warnings: [],
+        errors: [
+          {
+            type: ErrorType.UrlProtocolNotSupported,
+            content: util.format(ConstantString.UrlProtocolNotSupported, "http:"),
+            data: [{ url: "http://server1" }],
+          },
+          { type: ErrorType.NoSupportedApi, content: ConstantString.NoSupportedApi },
+        ],
+      });
+      sinon.assert.calledOnce(dereferenceStub);
+    });
+
+    it("should return an error result object if server url is relative path", async function () {
+      const specPath = "path/to/spec";
+      const spec = { openapi: "3.0.0", servers: [{ url: "path/to/server1" }] };
+
+      const specParser = new SpecParser(specPath);
+      const parseStub = sinon.stub(specParser.parser, "parse").resolves(spec as any);
+      const dereferenceStub = sinon.stub(specParser.parser, "dereference").resolves(spec as any);
+      const validateStub = sinon.stub(specParser.parser, "validate").resolves(spec as any);
+      const result = await specParser.validate();
+
+      expect(result).to.deep.equal({
+        status: ValidationStatus.Error,
+        warnings: [],
+        errors: [
+          {
+            type: ErrorType.RelativeServerUrlNotSupported,
+            content: ConstantString.RelativeServerUrlNotSupported,
+            data: [{ url: "path/to/server1" }],
           },
           { type: ErrorType.NoSupportedApi, content: ConstantString.NoSupportedApi },
         ],
@@ -114,7 +167,7 @@ describe("SpecParser", () => {
 
     it("should return an error result object if no supported apis", async function () {
       const specPath = "path/to/spec";
-      const spec = { openapi: "3.0.0", servers: ["server1"] };
+      const spec = { openapi: "3.0.0", servers: [{ url: "https://server1" }] };
 
       const specParser = new SpecParser(specPath);
       const parseStub = sinon.stub(specParser.parser, "parse").resolves(spec as any);
@@ -191,7 +244,7 @@ describe("SpecParser", () => {
         openapi: "3.0.2",
         servers: [
           {
-            url: "/v3",
+            url: "https://servers1",
           },
         ],
         paths: {
@@ -251,7 +304,7 @@ describe("SpecParser", () => {
         openapi: "3.0.2",
         servers: [
           {
-            url: "/v3",
+            url: "https://server1",
           },
         ],
         paths: {
@@ -303,7 +356,7 @@ describe("SpecParser", () => {
         openapi: "3.0.2",
         servers: [
           {
-            url: "/v3",
+            url: "https://server1",
           },
         ],
         paths: {
@@ -578,6 +631,85 @@ describe("SpecParser", () => {
         expect(err).to.be.instanceOf(SpecParserError);
         expect(err.errorType).to.equal(ErrorType.FilterSpecFailed);
         expect(err.message).to.equal("specFilter error");
+      }
+    });
+  });
+
+  describe("listOperationMap", () => {
+    it("should return a map of operation IDs to paths", async () => {
+      const specPath = "valid-spec.yaml";
+      const specParser = new SpecParser(specPath);
+      const spec = {
+        paths: {
+          "/pets": {
+            get: {
+              operationId: "getPetById",
+              security: [{ api_key: [] }],
+            },
+          },
+          "/user/{userId}": {
+            get: {
+              operationId: "getUserById",
+              parameters: [
+                {
+                  name: "userId",
+                  in: "path",
+                  schema: {
+                    type: "string",
+                  },
+                },
+              ],
+            },
+            post: {
+              operationId: "createUser",
+              security: [{ api_key: [] }],
+            },
+          },
+          "/store/order": {
+            get: {
+              parameters: [
+                {
+                  name: "orderId",
+                  in: "query",
+                  schema: {
+                    type: "string",
+                  },
+                },
+              ],
+            },
+            post: {
+              operationId: "placeOrder",
+            },
+          },
+        },
+      };
+
+      const parseStub = sinon.stub(specParser.parser, "parse").resolves(spec as any);
+      const dereferenceStub = sinon.stub(specParser.parser, "dereference").resolves(spec as any);
+
+      const expected = new Map<string, string>([
+        ["getUserById", "GET /user/{userId}"],
+        ["getStoreOrder", "GET /store/order"],
+      ]);
+      const result = await specParser.listOperationMap();
+      expect(result).to.deep.equal(expected);
+    });
+
+    it("should throw an error if loading the spec fails", async () => {
+      const specPath = "valid-spec.yaml";
+      const specParser = new SpecParser(specPath);
+      const expectedError = new SpecParserError(
+        "Failed to load spec",
+        ErrorType.ListOperationMapFailed
+      );
+
+      sinon.stub(specParser as any, "loadSpec").rejects(expectedError);
+      try {
+        await specParser.listOperationMap();
+        expect.fail("Expected an error to be thrown");
+      } catch (err) {
+        expect((err as SpecParserError).message).contain("Failed to load spec");
+        expect((err as SpecParserError).errorType).to.equal(ErrorType.ListOperationMapFailed);
       }
     });
   });

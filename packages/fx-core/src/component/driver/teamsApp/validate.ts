@@ -19,7 +19,6 @@ import { getDefaultString, getLocalizedString } from "../../../common/localizeUt
 import { HelpLinks } from "../../../common/constants";
 import { getAbsolutePath } from "../../utils/common";
 import { SummaryConstant } from "../../configManager/constant";
-import { updateProgress } from "../middleware/updateProgress";
 import { InvalidActionInputError } from "../../../error/common";
 
 const actionName = "teamsApp/validateManifest";
@@ -27,15 +26,9 @@ const actionName = "teamsApp/validateManifest";
 @Service(actionName)
 export class ValidateManifestDriver implements StepDriver {
   description = getLocalizedString("driver.teamsApp.description.validateDriver");
-
-  public async run(
-    args: ValidateManifestArgs,
-    context: DriverContext
-  ): Promise<Result<Map<string, string>, FxError>> {
-    const wrapContext = new WrapDriverContext(context, actionName, actionName);
-    const res = await this.validate(args, wrapContext);
-    return res;
-  }
+  readonly progressTitle = getLocalizedString(
+    "plugins.appstudio.validateManifest.progressBar.message"
+  );
 
   public async execute(
     args: ValidateManifestArgs,
@@ -49,10 +42,7 @@ export class ValidateManifestDriver implements StepDriver {
     };
   }
 
-  @hooks([
-    addStartAndEndTelemetry(actionName, actionName),
-    updateProgress(getLocalizedString("plugins.appstudio.validateManifest.progressBar.message")),
-  ])
+  @hooks([addStartAndEndTelemetry(actionName, actionName)])
   public async validate(
     args: ValidateManifestArgs,
     context: WrapDriverContext
@@ -166,7 +156,7 @@ export class ValidateManifestDriver implements StepDriver {
         summaryStr
       );
       if (context.platform === Platform.VS) {
-        await context.logProvider.info(validationSuccess);
+        context.logProvider.info(validationSuccess);
       }
       if (args.showMessage) {
         context.ui?.showMessage("info", validationSuccess, false);

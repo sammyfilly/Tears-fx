@@ -3,9 +3,15 @@
 
 import { Colors, LogLevel, LogProvider } from "@microsoft/teamsfx-api";
 import chalk from "chalk";
-import { SuccessText, TextType, WarningText, colorize, replaceTemplateString } from "../colorize";
+import {
+  ErrorPrefix,
+  SuccessText,
+  TextType,
+  WarningText,
+  colorize,
+  replaceTemplateString,
+} from "../colorize";
 import ScreenManager from "../console/screen";
-import { strings } from "../resource";
 import { getColorizedString } from "../utils";
 
 export class CLILogger implements LogProvider {
@@ -15,44 +21,38 @@ export class CLILogger implements LogProvider {
     return "";
   }
 
-  trace(message: string): Promise<boolean> {
-    return this.log(LogLevel.Trace, message);
+  verbose(message: string): void {
+    this.log(LogLevel.Verbose, message);
   }
 
-  debug(message: string): Promise<boolean> {
-    return this.log(LogLevel.Debug, message);
+  debug(message: string): void {
+    this.log(LogLevel.Debug, message);
   }
-  // verbose(message: string): Promise<boolean> {
-  //   return this.log(LogLevel.Verbose, message);
-  // }
-  info(message: Array<{ content: string; color: Colors }>): Promise<boolean>;
 
-  info(message: string): Promise<boolean>;
+  info(message: Array<{ content: string; color: Colors }>): void;
 
-  info(message: string | Array<{ content: string; color: Colors }>): Promise<boolean> {
+  info(message: string): void;
+
+  info(message: string | Array<{ content: string; color: Colors }>): void {
     if (message instanceof Array) {
       message = getColorizedString(message);
     } else {
       message = chalk.whiteBright(message);
     }
-    return this.log(LogLevel.Info, message);
+    this.log(LogLevel.Info, message);
   }
 
-  warning(message: string): Promise<boolean> {
-    return this.log(LogLevel.Warning, message);
+  warning(message: string): void {
+    this.log(LogLevel.Warning, message);
   }
 
-  error(message: string): Promise<boolean> {
+  error(message: string): void {
     return this.log(LogLevel.Error, message);
   }
 
-  fatal(message: string): Promise<boolean> {
-    return this.log(LogLevel.Fatal, message);
-  }
-
-  async log(logLevel: LogLevel, message: string): Promise<boolean> {
+  log(logLevel: LogLevel, message: string): void {
     if (logLevel < this.logLevel) {
-      return true;
+      return;
     }
     if (logLevel < LogLevel.Info) {
       ScreenManager.writeLine(colorize(message, TextType.Details));
@@ -61,9 +61,12 @@ export class CLILogger implements LogProvider {
     } else if (logLevel === LogLevel.Warning) {
       ScreenManager.writeLine(colorize(message, TextType.Warning));
     } else if (logLevel >= LogLevel.Error) {
-      ScreenManager.writeLine(colorize(strings["error.prefix"] + message, TextType.Error), true);
+      ScreenManager.writeLine(colorize(ErrorPrefix + message, TextType.Error), true);
     }
-    return true;
+  }
+
+  async logInFile(logLevel: LogLevel, message: string): Promise<void> {
+    return new Promise((resolve) => resolve());
   }
 
   outputSuccess(template: string, ...args: string[]): void {
@@ -87,7 +90,7 @@ export class CLILogger implements LogProvider {
   }
   outputError(template: string, ...args: string[]): void {
     ScreenManager.writeLine(
-      colorize(strings["error.prefix"] + replaceTemplateString(template, ...args), TextType.Error),
+      colorize(ErrorPrefix + replaceTemplateString(template, ...args), TextType.Error),
       true
     );
   }
