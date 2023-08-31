@@ -55,6 +55,7 @@ describe("utils", () => {
     canUpdateConfiguration: true,
     commands: [],
     messageHandlers: [],
+    messagingExtensionServiceType: "BotBased",
   };
 
   const validConfigurableTabForMeetingExtension: ConfigurableTab = {

@@ -76,7 +76,7 @@ export function isBotBasedMessageExtension(appDefinition: AppDefinition): boolea
   return (
     !!appDefinition.messagingExtensions &&
     appDefinition.messagingExtensions.length > 0 &&
-    !!appDefinition.messagingExtensions[0].botId
+    appDefinition.messagingExtensions[0].messagingExtensionServiceType === "BotBased"
   );
 }
 

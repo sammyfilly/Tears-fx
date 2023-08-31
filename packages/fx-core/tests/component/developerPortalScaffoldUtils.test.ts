@@ -1111,6 +1111,7 @@ describe("developPortalScaffoldUtils", () => {
       canUpdateConfiguration: true,
       commands: [],
       messageHandlers: [],
+      messagingExtensionServiceType: "BotBased",
     };
 
     it("return TabNonSsoAndDefaultBot", () => {
