@@ -25,8 +25,14 @@ export class ConstantString {
   static readonly UnknownSchema = getLocalizedString("core.common.UnknownSchema");
   // TODO: localization
   static readonly UrlProtocolNotSupported =
-    "Protocol %s is not supported, you should use https protocol instead.";
-  static readonly RelativeServerUrlNotSupported = "Relative server url is not supported.";
+    "Sever url is not correct: protocol %s is not supported, you should use https protocol instead.";
+  static readonly RelativeServerUrlNotSupported =
+    "Server url is not correct: relative server url is not supported.";
+  static readonly ResolveServerUrlFailed =
+    "Resolve server Url failed: environment variable %s is not defined";
+  static readonly OperationOnlyContainsOptionalParam =
+    "Operation %s only contains optional parameters which is not supported";
+
   static readonly GetMethod = "get";
   static readonly PostMethod = "post";
   static readonly AdaptiveCardVersion = "1.5";

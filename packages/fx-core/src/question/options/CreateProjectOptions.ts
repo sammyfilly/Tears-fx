@@ -24,7 +24,7 @@ export const CreateProjectOptions: CLICommandOption[] = [
     questionName: "capabilities",
     type: "string",
     shortName: "c",
-    description: "Specifies the Teams App capability.",
+    description: "Specifies the Microsoft Teams App capability.",
     required: true,
     choices: [
       "bot",
@@ -75,7 +75,7 @@ export const CreateProjectOptions: CLICommandOption[] = [
     name: "spfx-framework-type",
     type: "string",
     shortName: "k",
-    description: "Framework",
+    description: "Framework.",
     default: "react",
     choices: ["react", "minimal", "none"],
   },

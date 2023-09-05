@@ -13,23 +13,30 @@ import {
   UserInteraction,
   ok,
 } from "@microsoft/teamsfx-api";
+import axios from "axios";
 import { assert } from "chai";
 import fs from "fs-extra";
 import "mocha";
 import mockedEnv, { RestoreFn } from "mocked-env";
+import * as path from "path";
 import sinon from "sinon";
+import { FeatureFlagName } from "../../src/common/constants";
 import { getLocalizedString } from "../../src/common/localizeUtils";
+import { ErrorType, ValidationStatus } from "../../src/common/spec-parser/interfaces";
+import { SpecParser } from "../../src/common/spec-parser/specParser";
 import { AppDefinition } from "../../src/component/driver/teamsApp/interfaces/appdefinitions/appDefinition";
+import { manifestUtils } from "../../src/component/driver/teamsApp/utils/ManifestUtils";
+import { setTools } from "../../src/core/globalVars";
 import {
   CapabilityOptions,
   NotificationTriggerOptions,
   ProjectTypeOptions,
   RuntimeOptions,
   SPFxVersionOptionIds,
-  ScratchOptions,
   apiOperationQuestion,
   apiSpecLocationQuestion,
   appNameQuestion,
+  capabilityQuestion,
   createProjectQuestionNode,
   createSampleProjectQuestionNode,
   folderQuestion,
@@ -42,13 +49,6 @@ import {
 import { QuestionNames } from "../../src/question/questionNames";
 import { QuestionTreeVisitor, traverse } from "../../src/ui/visitor";
 import { MockTools, MockUserInteraction, randomAppName } from "../core/utils";
-import * as path from "path";
-import { FeatureFlagName } from "../../src/common/constants";
-import { SpecParser } from "../../src/common/spec-parser/specParser";
-import { ErrorType, ValidationStatus, WarningType } from "../../src/common/spec-parser/interfaces";
-import { setTools } from "../../src/core/globalVars";
-import axios from "axios";
-import { manifestUtils } from "../../src/component/driver/teamsApp/utils/ManifestUtils";
 
 export async function callFuncs(question: Question, inputs: Inputs, answer?: string) {
   if (question.default && typeof question.default !== "string") {
@@ -609,6 +609,7 @@ describe("scaffold question", () => {
       };
       await traverse(createProjectQuestionNode(), inputs, ui, undefined, visitor);
       assert.deepEqual(questions, [
+        QuestionNames.ProjectType,
         QuestionNames.Capabilities,
         QuestionNames.BotTrigger,
         QuestionNames.ProgrammingLanguage,
@@ -659,6 +660,7 @@ describe("scaffold question", () => {
       await traverse(createProjectQuestionNode(), inputs, ui, undefined, visitor);
       assert.deepEqual(questions, [
         QuestionNames.Runtime,
+        QuestionNames.ProjectType,
         QuestionNames.Capabilities,
         QuestionNames.BotTrigger,
         QuestionNames.ProgrammingLanguage,
@@ -880,6 +882,7 @@ describe("scaffold question", () => {
         };
         await traverse(createProjectQuestionNode(), inputs, ui, undefined, visitor);
         assert.deepEqual(questions, [
+          QuestionNames.ProjectType,
           QuestionNames.Capabilities,
           QuestionNames.CopilotPluginDevelopment,
           QuestionNames.ProgrammingLanguage,
@@ -1524,8 +1527,15 @@ describe("scaffold question", () => {
         CapabilityOptions.collectFormMe(),
       ]);
     });
+    it("cli non-interactive", () => {
+      const question = capabilityQuestion();
+      const options = question.dynamicOptions!({ platform: Platform.CLI, nonInteractive: true });
+      assert.deepEqual(
+        options,
+        CapabilityOptions.all({ platform: Platform.CLI, nonInteractive: true })
+      );
+    });
   });
-
   describe("programmingLanguageQuestion", () => {
     const question = programmingLanguageQuestion();
     it("office addin: should have typescript as options", async () => {

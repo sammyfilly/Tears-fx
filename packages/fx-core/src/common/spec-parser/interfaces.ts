@@ -78,6 +78,7 @@ export enum ErrorType {
   UrlProtocolNotSupported = "url-protocol-not-supported",
   RelativeServerUrlNotSupported = "relative-server-url-not-supported",
   NoSupportedApi = "no-supported-api",
+  ResolveServerUrlFailed = "resolve-server-url-failed",
 
   ListFailed = "list-failed",
   ListOperationMapFailed = "list-operation-map-failed",
@@ -99,6 +100,7 @@ export enum WarningType {
   MethodNotSupported = "method-not-supported",
   OperationIdMissing = "operationid-missing",
   GenerateCardFailed = "generate-card-failed",
+  OperationOnlyContainsOptionalParam = "operation-only-contains-optional-param",
   Unknown = "unknown",
 }
 
@@ -160,4 +162,10 @@ export interface Parameter {
   name: string;
   title: string;
   description: string;
+}
+
+export interface CheckParamResult {
+  requiredNum: number;
+  optionalNum: number;
+  isValid: boolean;
 }
