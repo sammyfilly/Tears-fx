@@ -205,7 +205,26 @@ describe("LaunchHelper", () => {
       );
     });
 
-    it("Outlook, signed in", async () => {
+    it("Office, staticTab, acquired, signed in", async () => {
+      sinon.stub(m365TokenProvider, "getStatus").resolves(
+        ok({
+          status: "",
+          accountInfo: {
+            tid: "test-tid",
+            upn: "test-upn",
+          },
+        })
+      );
+      sinon.stub(LaunchHelper.prototype, <any>"getM365AppId").resolves(ok("test-app-id"));
+      const result = await launchHelper.getLaunchUrl(HubTypes.office, "test-id", ["staticTab"]);
+      chai.assert(result.isOk());
+      chai.assert.equal(
+        (result as any).value,
+        "https://www.office.com/m365apps/test-app-id?auth=2&login_hint=test-upn"
+      );
+    });
+
+    it("Office, Bot, acquired, signed in", async () => {
       sinon.stub(m365TokenProvider, "getStatus").resolves(
         ok({
           status: "",
@@ -220,7 +239,7 @@ describe("LaunchHelper", () => {
       chai.assert(result.isOk());
       chai.assert.equal(
         (result as any).value,
-        "https://www.office.com/m365apps/test-app-id?auth=2&login_hint=test-upn"
+        "https://www.office.com/?auth=2&login_hint=test-upn"
       );
     });
   });

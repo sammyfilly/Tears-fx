@@ -71,7 +71,9 @@ export class LaunchHelper {
           if (result.isErr()) {
             return err(result.error);
           }
-          const baseUrl = `https://www.office.com/m365apps/${result.value}?auth=2`;
+          const baseUrl = capabilities.includes("staticTab")
+            ? `https://www.office.com/m365apps/${result.value}?auth=2`
+            : "https://www.office.com/?auth=2";
           url = new URL(baseUrl);
         }
         break;
