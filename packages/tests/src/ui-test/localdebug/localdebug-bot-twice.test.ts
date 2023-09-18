@@ -10,7 +10,7 @@ import {
   stopDebugging,
   waitForTerminal,
 } from "../../utils/vscodeOperation";
-import { initPage, validateEchoBot } from "../../utils/playwrightOperation";
+import { initPage, validateBot, validateEchoBot } from "../../utils/playwrightOperation";
 import { LocalDebugTestContext } from "./localdebugContext";
 import {
   Timeout,
@@ -30,7 +30,7 @@ describe("Local Debug Tests", function () {
   beforeEach(async function () {
     // ensure workbench is ready
     this.timeout(Timeout.prepareTestCase);
-    localDebugTestContext = new LocalDebugTestContext("bot");
+    localDebugTestContext = new LocalDebugTestContext("crbot");
     await localDebugTestContext.before();
   });
 
@@ -72,14 +72,14 @@ describe("Local Debug Tests", function () {
         await waitForTerminal(LocalDebugTaskLabel.StartLocalTunnel);
         await waitForTerminal(
           LocalDebugTaskLabel.StartBotApp,
-          LocalDebugTaskInfo.StartBotInfo2
+          LocalDebugTaskInfo.StartBotAppInfo
         );
 
         // check if there is error "Could not attach to main target"
         await driver.sleep(Timeout.startdebugging);
         await waitForTerminal(
           LocalDebugTaskLabel.StartBotApp,
-          LocalDebugTaskInfo.StartBotInfo2
+          LocalDebugTaskInfo.StartBotAppInfo
         );
       } catch {
         const dialog = new ModalDialog();
@@ -101,14 +101,14 @@ describe("Local Debug Tests", function () {
         try {
           await waitForTerminal(
             LocalDebugTaskLabel.StartBotApp,
-            LocalDebugTaskInfo.StartBotInfo2
+            LocalDebugTaskInfo.StartBotAppInfo
           );
 
           // check if there is error "Debug Anyway"
           await driver.sleep(Timeout.startdebugging);
           await waitForTerminal(
             LocalDebugTaskLabel.StartBotApp,
-            LocalDebugTaskInfo.StartBotInfo2
+            LocalDebugTaskInfo.StartBotAppInfo
           );
         } catch {
           const dialog = new ModalDialog();
@@ -118,7 +118,7 @@ describe("Local Debug Tests", function () {
           await driver.sleep(Timeout.shortTimeLoading);
           await waitForTerminal(
             LocalDebugTaskLabel.StartBotApp,
-            LocalDebugTaskInfo.StartBotInfo2
+            LocalDebugTaskInfo.StartBotAppInfo
           );
         }
       }
@@ -131,7 +131,10 @@ describe("Local Debug Tests", function () {
         Env.password
       );
       await localDebugTestContext.validateLocalStateForBot();
-      await validateEchoBot(page);
+      await validateBot(page, {
+        botCommand: "helloWorld",
+        expected: "Your Hello World App is Running",
+      });
     }
   );
 });
