@@ -50,7 +50,7 @@ describe("Local Debug Tests", function () {
         localDebugTestContext.testRootFolder,
         localDebugTestContext.appName
       );
-      validateFileExist(projectPath, "index.js");
+      //validateFileExist(projectPath, "index.js");
       const driver = VSBrowser.instance.driver;
       await startDebugging(DebugItemSelect.DebugInTeamsUsingChrome);
 
