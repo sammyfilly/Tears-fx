@@ -85,6 +85,12 @@ export const debugInitMap: Record<TemplateProject, () => Promise<void>> = {
   [TemplateProject.GraphConnectorBot]: async () => {
     await startDebugging();
   },
+  [TemplateProject.SpfxProductivity]: async () => {
+    await startDebugging("Teams workbench (Chrome)");
+  },
+  [TemplateProject.RetailDashboard]: async () => {
+    await startDebugging("Teams workbench (Chrome)");
+  },
 };
 
 export async function initPage(

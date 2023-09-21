@@ -50,6 +50,8 @@ export enum TemplateProject {
   OutlookSignature = "Set signature using Outlook add-in",
   ChefBot = "Teams Chef Bot",
   GraphConnectorBot = "Graph Connector Bot",
+  SpfxProductivity = "One Productivity Hub using Graph Toolkit with SPFx",
+  RetailDashboard = "Contoso Retail Dashboard",
 }
 
 export enum TemplateProjectFolder {
@@ -114,6 +116,8 @@ export const sampleProjectMap: Record<TemplateProject, TemplateProjectFolder> =
     [TemplateProject.ChefBot]: TemplateProjectFolder.ChefBot,
     [TemplateProject.GraphConnectorBot]:
       TemplateProjectFolder.GraphConnectorBot,
+    [TemplateProject.SpfxProductivity]: TemplateProjectFolder.SpfxProductivity,
+    [TemplateProject.RetailDashboard]: TemplateProjectFolder.RetailDashboard,
   };
 
 export enum Resource {
