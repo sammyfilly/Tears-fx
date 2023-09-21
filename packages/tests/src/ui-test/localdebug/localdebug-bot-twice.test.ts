@@ -63,7 +63,7 @@ describe("Local Debug Tests", function () {
         await stopDebugging();
         await driver.sleep(Timeout.stopdebugging);
         try {
-          await killPort(3978);
+          // await killPort(3978);
           console.log(`close port 3978 successfully`);
         } catch (error) {
           console.log(`close port 3978 failed`);
