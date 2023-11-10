@@ -127,8 +127,8 @@ importers:
         specifier: ^0.1.2
         version: link:../manifest
       axios:
-        specifier: ^0.21.2
-        version: 0.21.2
+        specifier: ^1.6.0
+        version: 1.6.0
       chai:
         specifier: ^4.3.4
         version: 4.3.4
@@ -587,8 +587,8 @@ importers:
         specifier: ^8.5.0
         version: 8.5.0
       axios:
-        specifier: ^0.21.4
-        version: 0.21.4(debug@4.3.4)
+        specifier: ^1.6.0
+        version: 1.6.0
       axios-retry:
         specifier: ^3.3.1
         version: 3.3.1
@@ -817,7 +817,7 @@ importers:
         version: 1.0.2
       axios-mock-adapter:
         specifier: ^1.20.0
-        version: 1.20.0(axios@0.21.4)
+        version: 1.20.0(axios@1.6.0)
       chai:
         specifier: ^4.2.0
         version: 4.3.4
@@ -921,8 +921,8 @@ importers:
         specifier: ^1.0.0
         version: 1.0.0(ajv@8.5.0)
       axios:
-        specifier: ^0.21.2
-        version: 0.21.2
+        specifier: ^1.6.0
+        version: 1.6.0
       fs-extra:
         specifier: ^9.1.0
         version: 9.1.0
@@ -1112,8 +1112,8 @@ importers:
         specifier: ^2.13.0
         version: 2.13.0(supports-color@9.4.0)
       axios:
-        specifier: ^0.27.2
-        version: 0.27.2
+        specifier: ^1.6.0
+        version: 1.6.0
       botbuilder:
         specifier: '>=4.18.0 <5.0.0'
         version: 4.18.0(supports-color@9.4.0)
@@ -1207,7 +1207,7 @@ importers:
         version: 2.0.0
       axios-mock-adapter:
         specifier: ^1.20.0
-        version: 1.20.0(axios@0.27.2)
+        version: 1.20.0(axios@1.6.0)
       botbuilder-core:
         specifier: '>=4.18.0 <5.0.0'
         version: 4.18.0(supports-color@9.4.0)
@@ -1731,8 +1731,8 @@ importers:
         specifier: ^7.3.8
         version: 7.3.8
       axios:
-        specifier: ^0.21.1
-        version: 0.21.2
+        specifier: ^1.6.0
+        version: 1.6.0
       azure-arm-resource:
         specifier: ^7.4.0
         version: 7.4.0
@@ -10879,23 +10879,12 @@ packages:
     engines: {node: '>=4'}
     dev: true
 
-  /axios-mock-adapter@1.20.0(axios@0.21.4):
+  /axios-mock-adapter@1.20.0(axios@1.6.0):
     resolution: {integrity: sha512-shZRhTjLP0WWdcvHKf3rH3iW9deb3UdKbdnKUoHmmsnBhVXN3sjPJM6ZvQ2r/ywgvBVQrMnjrSyQab60G1sr2w==}
     peerDependencies:
       axios: '>= 0.9.0'
     dependencies:
-      axios: 0.21.4(debug@4.3.4)
-      fast-deep-equal: 3.1.3
-      is-blob: 2.1.0
-      is-buffer: 2.0.5
-    dev: true
-
-  /axios-mock-adapter@1.20.0(axios@0.27.2):
-    resolution: {integrity: sha512-shZRhTjLP0WWdcvHKf3rH3iW9deb3UdKbdnKUoHmmsnBhVXN3sjPJM6ZvQ2r/ywgvBVQrMnjrSyQab60G1sr2w==}
-    peerDependencies:
-      axios: '>= 0.9.0'
-    dependencies:
-      axios: 0.27.2
+      axios: 1.6.0
       fast-deep-equal: 3.1.3
       is-blob: 2.1.0
       is-buffer: 2.0.5
@@ -10906,14 +10895,6 @@ packages:
     dependencies:
       '@babel/runtime': 7.22.10
       is-retry-allowed: 2.2.0
-    dev: false
-
-  /axios@0.21.2:
-    resolution: {integrity: sha512-87otirqUw3e8CzHTMO+/9kh/FSgXt/eVDvipijwDtEuwbkySWZ9SBm6VEubmJ/kLKEoLQV/POhxXFb66bfekfg==}
-    dependencies:
-      follow-redirects: 1.15.2(debug@4.3.4)
-    transitivePeerDependencies:
-      - debug
     dev: false
 
   /axios@0.21.4(debug@4.3.4):
@@ -10938,23 +10919,14 @@ packages:
       - debug
     dev: false
 
-  /axios@0.27.2:
-    resolution: {integrity: sha512-t+yRIyySRTp/wua5xEr+z1q60QmLq8ABsS5O9Me1AsE5dfKqgnCFzwiCZZ/cGNd1lq4/7akDWMxdhVlucjmnOQ==}
-    dependencies:
-      follow-redirects: 1.15.2(debug@4.3.4)
-      form-data: 4.0.0
-    transitivePeerDependencies:
-      - debug
-
-  /axios@1.5.0:
-    resolution: {integrity: sha512-D4DdjDo5CY50Qms0qGQTTw6Q44jl7zRwY7bthds06pUGfChBCTcQs+N743eFWGEd6pRTMd6A+I87aWyFV5wiZQ==}
+  /axios@1.6.0:
+    resolution: {integrity: sha512-EZ1DYihju9pwVB+jg67ogm+Tmqc6JmhamRN6I4Zt8DfZu5lbcQGw3ozH9lFejSJgs/ibaef3A9PMXPLeefFGJg==}
     dependencies:
       follow-redirects: 1.15.2(debug@4.3.4)
       form-data: 4.0.0
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
       - debug
-    dev: true
 
   /axobject-query@3.2.1:
     resolution: {integrity: sha512-jsyHu61e6N4Vbz/v18DHwWYKK0bSWLqn47eeDSKPB7m8tqMHF9YJ+mhIk2lVteyZrY8tnSj/jHOv4YiTCuCJgg==}
@@ -20722,7 +20694,7 @@ packages:
       '@yarnpkg/lockfile': 1.1.0
       '@yarnpkg/parsers': 3.0.0-rc.46
       '@zkochan/js-yaml': 0.0.6
-      axios: 1.5.0
+      axios: 1.6.0
       chalk: 4.1.2
       cli-cursor: 3.1.0
       cli-spinners: 2.6.1
@@ -22002,7 +21974,6 @@ packages:
 
   /proxy-from-env@1.1.0:
     resolution: {integrity: sha512-D+zkORCbA9f1tdWRK0RaCR3GPv50cMxcrz4X8k5LTSUD1Dkw47mKJEZQNunItRTkWwgtaUSo1RVFRIG9ZXiFYg==}
-    dev: true
 
   /proxyquire@2.1.3:
     resolution: {integrity: sha512-BQWfCqYM+QINd+yawJz23tbBM40VIGXOdDw3X344KcclI/gtBbdWF6SlQ4nK/bYhF9d27KYug9WzljHC6B9Ysg==}
